@@ -10,7 +10,7 @@ const program = new Command();
 program
 	.name("trx")
 	.description("Agent-first CLI for audio/video transcription via Whisper")
-	.version("0.2.0")
+	.version("0.2.1")
 	.option("-o, --output <format>", "output format (json, table, auto)", "auto")
 	.hook("preAction", (thisCommand) => {
 		const opts = thisCommand.opts();
