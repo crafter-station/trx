@@ -84,6 +84,7 @@ export function createTranscribeCommand(): Command {
 				}
 
 				let spinner: ReturnType<typeof p.spinner> | null = null;
+				let done = false;
 				if (isTTY) {
 					spinner = p.spinner();
 				}
@@ -103,13 +104,14 @@ export function createTranscribeCommand(): Command {
 					noDownload: opts.download === false,
 					noClean: opts.clean === false,
 					onStep: (step) => {
-						if (spinner) spinner.start(step);
+						if (spinner && !done) spinner.start(step);
 					},
 					onProgress: (progress) => {
-						if (spinner) spinner.message(`Transcribing... ${progress.percent}%`);
+						if (spinner && !done) spinner.message(`Transcribing... ${progress.percent}%`);
 					},
 				});
 
+				done = true;
 				if (spinner) spinner.stop("Transcription complete");
 
 				const filtered = opts.fields ? filterFields(result, opts.fields) : result;
@@ -130,6 +132,7 @@ export function createTranscribeCommand(): Command {
 				if (isTTY) {
 					const wordCount = result.text.split(/\s+/).filter(Boolean).length;
 					p.note(`${wordCount} words transcribed\n\nopen ${result.files.txt}`, "Next");
+					process.exit(0);
 				}
 			} catch (e) {
 				outputError((e as Error).message, format);
