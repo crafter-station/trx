@@ -38,5 +38,8 @@
 	},
 	"devDependencies": {
 		"@types/bun": "latest"
+	},
+	"engines": {
+		"bun": ">=1.0.0"
 	}
 }
