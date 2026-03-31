@@ -27,6 +27,9 @@
         "astro": "^5.9.4",
         "shiki": "^3.4.2",
       },
+      "devDependencies": {
+        "sharp": "^0.34.5",
+      },
     },
   },
   "packages": {

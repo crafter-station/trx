@@ -12,5 +12,8 @@
 		"@phosphor-icons/core": "^2.1.1",
 		"astro": "^5.9.4",
 		"shiki": "^3.4.2"
+	},
+	"devDependencies": {
+		"sharp": "^0.34.5"
 	}
 }
