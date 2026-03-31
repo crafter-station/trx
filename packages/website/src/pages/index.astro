@@ -65,13 +65,21 @@ const commandHtmls = await Promise.all(
 	commands.map(c => codeToHtml(c.code, { lang: "bash", theme: trxTheme }))
 );
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
+function phosphor(name: string): string {
+	const iconPath = resolve("node_modules/@phosphor-icons/core/assets/regular", `${name}.svg`);
+	return readFileSync(iconPath, "utf-8");
+}
+
 const useCases = [
-	{ emoji: "📺", label: "YouTube tutorials", cmd: 'trx "https://youtube.com/watch?v=..."' },
-	{ emoji: "🎵", label: "TikTok reels", cmd: 'trx "https://tiktok.com/@user/video/..."' },
-	{ emoji: "🎙️", label: "Podcast episodes", cmd: 'trx podcast.mp3 --language en' },
-	{ emoji: "📱", label: "Instagram stories", cmd: 'trx "https://instagram.com/reel/..."' },
-	{ emoji: "🎤", label: "Meeting recordings", cmd: 'trx meeting.m4a --fields text' },
-	{ emoji: "🐦", label: "Twitter/X videos", cmd: 'trx "https://x.com/user/status/..."' },
+	{ icon: phosphor("youtube-logo"), label: "YouTube tutorials", cmd: 'trx "https://youtube.com/watch?v=..."' },
+	{ icon: phosphor("tiktok-logo"), label: "TikTok reels", cmd: 'trx "https://tiktok.com/@user/video/..."' },
+	{ icon: phosphor("apple-podcasts-logo"), label: "Podcast episodes", cmd: 'trx podcast.mp3 --language en' },
+	{ icon: phosphor("instagram-logo"), label: "Instagram stories", cmd: 'trx "https://instagram.com/reel/..."' },
+	{ icon: phosphor("microphone"), label: "Meeting recordings", cmd: 'trx meeting.m4a --fields text' },
+	{ icon: phosphor("x-logo"), label: "Twitter/X videos", cmd: 'trx "https://x.com/user/status/..."' },
 ];
 
 const principles = [
@@ -307,7 +315,8 @@ const asciiLogo = `
 			border-radius: 8px; padding: 20px; transition: border-color 150ms;
 		}
 		.case-card:hover { border-color: var(--blue-light); }
-		.case-emoji { font-size: 24px; margin-bottom: 8px; }
+		.case-icon { width: 28px; height: 28px; color: var(--blue-light); margin-bottom: 8px; }
+		.case-icon :global(svg) { width: 100%; height: 100%; }
 		.case-label { font-size: 14px; font-weight: 600; color: var(--white); margin-bottom: 8px; }
 		.case-cmd {
 			font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--blue-light);
@@ -469,7 +478,7 @@ const asciiLogo = `
 		<div class="cases-grid">
 			{useCases.map(uc => (
 				<div class="case-card">
-					<div class="case-emoji">{uc.emoji}</div>
+					<div class="case-icon" set:html={uc.icon} />
 					<div class="case-label">{uc.label}</div>
 					<div class="case-cmd">$ {uc.cmd}</div>
 				</div>
