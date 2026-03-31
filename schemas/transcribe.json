@@ -1,0 +1,77 @@
+{
+	"command": "transcribe",
+	"description": "Transcribe audio/video from URL or local file using Whisper",
+	"arguments": {
+		"input": {
+			"type": "string",
+			"required": true,
+			"description": "URL (https://...) or local file path (.mp4, .m4a, .ogg, .wav, .webm, .mkv, .avi, .mov, .flac, .mp3)"
+		}
+	},
+	"flags": {
+		"--language": {
+			"type": "string",
+			"default": "auto",
+			"description": "ISO 639-1 language code or 'auto' for auto-detection"
+		},
+		"--model": {
+			"type": "string",
+			"enum": ["tiny", "tiny.en", "base", "base.en", "small", "small.en", "medium", "medium.en", "large"],
+			"description": "Override whisper model size"
+		},
+		"--output": {
+			"type": "string",
+			"enum": ["json", "table", "auto"],
+			"default": "auto",
+			"description": "Output format. 'auto' uses 'table' for TTY, 'json' when piped"
+		},
+		"--fields": {
+			"type": "string",
+			"description": "Comma-separated fields to include: text, srt, metadata, files"
+		},
+		"--dry-run": {
+			"type": "boolean",
+			"default": false,
+			"description": "Validate input and show execution plan without transcribing"
+		},
+		"--json": {
+			"type": "string",
+			"description": "Raw JSON payload: {\"input\": \"...\", \"language\": \"...\", \"model\": \"...\"}"
+		},
+		"--output-dir": {
+			"type": "string",
+			"default": ".",
+			"description": "Directory for output files"
+		},
+		"--no-download": {
+			"type": "boolean",
+			"default": false,
+			"description": "Skip yt-dlp download step (input must be local file)"
+		},
+		"--no-clean": {
+			"type": "boolean",
+			"default": false,
+			"description": "Skip ffmpeg audio cleaning/normalization"
+		}
+	},
+	"output": {
+		"success": "boolean",
+		"input": "string",
+		"files": {
+			"wav": "string (path)",
+			"srt": "string (path)",
+			"txt": "string (path)"
+		},
+		"metadata": {
+			"language": "string",
+			"model": "string"
+		},
+		"text": "string (full transcript)"
+	},
+	"examples": [
+		"trx transcribe recording.mp4 --output json",
+		"trx transcribe https://youtube.com/watch?v=abc --language es --output json",
+		"trx transcribe video.mp4 --fields text --output json",
+		"trx transcribe video.mp4 --dry-run --output json"
+	]
+}

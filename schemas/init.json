@@ -1,0 +1,45 @@
+{
+	"command": "init",
+	"description": "Install dependencies (whisper-cli, yt-dlp, ffmpeg) and download Whisper model",
+	"flags": {
+		"--model": {
+			"type": "string",
+			"enum": ["tiny", "base", "small", "medium", "large"],
+			"default": "small",
+			"description": "Whisper model size to download"
+		},
+		"--language": {
+			"type": "string",
+			"default": "auto",
+			"description": "Default language for transcription (ISO 639-1 code or 'auto')"
+		},
+		"--output": {
+			"type": "string",
+			"enum": ["json", "table", "auto"],
+			"default": "auto",
+			"description": "Output format"
+		}
+	},
+	"dependencies": {
+		"whisper-cli": {
+			"install": "brew install whisper-cpp",
+			"purpose": "Local speech-to-text transcription engine"
+		},
+		"yt-dlp": {
+			"install": "brew install yt-dlp",
+			"purpose": "Download video/audio from URLs (YouTube, Twitter, etc.)"
+		},
+		"ffmpeg": {
+			"install": "brew install ffmpeg",
+			"purpose": "Audio cleaning, conversion, silence removal, noise reduction"
+		}
+	},
+	"output": {
+		"success": "boolean",
+		"model": "string",
+		"language": "string",
+		"modelPath": "string",
+		"config": "TrxConfig object"
+	},
+	"examples": ["trx init", "trx init --model small --language es", "trx init --model large --output json"]
+}
