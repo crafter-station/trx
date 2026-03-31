@@ -66,17 +66,27 @@ async function downloadModel(modelSize: string, modelsDir: string, isTTY: boolea
 }
 
 async function installSkill(isTTY: boolean): Promise<boolean> {
-	try {
-		const result = await spawn(["npx", "skills", "add", "crafter-station/trx", "-g", "-y"]);
-		if (result.exitCode === 0) {
-			if (isTTY) p.log.success("Claude Code skill installed");
-			return true;
-		}
-		if (isTTY)
-			p.log.warn("Skill install failed (non-critical). Install manually: npx skills add crafter-station/trx -g -y");
+	if (!isTTY) return false;
+
+	const install = await p.confirm({
+		message: "Install agent skill? (lets AI agents use trx with post-processing)",
+	});
+
+	if (p.isCancel(install) || !install) {
+		p.log.info("Skipped. Install later: npx skills add crafter-station/trx -g");
 		return false;
+	}
+
+	try {
+		const proc = Bun.spawn(["npx", "skills", "add", "crafter-station/trx", "-g"], {
+			stdin: "inherit",
+			stdout: "inherit",
+			stderr: "inherit",
+		});
+		const exitCode = await proc.exited;
+		return exitCode === 0;
 	} catch {
-		if (isTTY) p.log.warn("npx skills not available. Install skill manually: npx skills add crafter-station/trx -g -y");
+		p.log.warn("npx skills not available. Install manually: npx skills add crafter-station/trx -g");
 		return false;
 	}
 }
@@ -137,7 +147,7 @@ export function createInitCommand(): Command {
 				config.modelPath = modelPath;
 				writeConfig(config);
 
-				if (isTTY) p.log.step("Installing Claude Code skill...");
+				if (isTTY) p.log.step("Agent skill setup...");
 				const skillInstalled = await installSkill(isTTY);
 
 				if (isTTY) {

@@ -13,6 +13,8 @@ metadata:
 
 # trx -- Agent-First Transcription CLI
 
+Install: `npx skills add crafter-station/trx -g`
+
 ## Prerequisites
 
 Check setup: `trx doctor --output json`. If dependencies missing, run `trx init`.

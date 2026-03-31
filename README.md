@@ -11,14 +11,14 @@ bun add -g @crafter/trx
 trx init
 ```
 
-`trx init` installs dependencies (`whisper-cli`, `yt-dlp`, `ffmpeg` via Homebrew), downloads a Whisper model, and installs the Claude Code agent skill.
+`trx init` installs dependencies (`whisper-cli`, `yt-dlp`, `ffmpeg` via Homebrew), downloads a Whisper model, and optionally installs the agent skill for your AI coding tool.
 
 ### Skill Only
 
-If you already have trx set up and just want the Claude Code skill:
+If you already have trx set up and just want the agent skill:
 
 ```bash
-npx skills add crafter-station/trx -g -y
+npx skills add crafter-station/trx -g
 ```
 
 ## Usage
@@ -67,7 +67,7 @@ Built following [agent-first CLI principles](https://justin.poehnelt.com/posts/r
 - **Input validation** rejects control characters, path traversals, URL-encoded strings
 - **Ships with SKILL.md** for Claude Code agent post-processing
 
-## Claude Code Skill
+## Agent Skill
 
 The bundled skill (`skills/trx/SKILL.md`) enables AI agents to:
 
