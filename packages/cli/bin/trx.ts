@@ -24,17 +24,12 @@ program.addCommand(createTranscribeCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createSchemaCommand());
 
-program
-	.argument("[input]", "URL or file path to transcribe (shorthand for trx transcribe)")
-	.action(async (input, _opts, cmd) => {
-		if (!input) {
-			cmd.help();
-			return;
-		}
-		const transcribeCmd = program.commands.find((c) => c.name() === "transcribe");
-		if (transcribeCmd) {
-			await transcribeCmd.parseAsync(["node", "trx", "transcribe", input, ...process.argv.slice(3)]);
-		}
-	});
+const args = process.argv.slice(2);
+const subcommands = ["init", "transcribe", "doctor", "schema", "help", "--help", "-h", "--version", "-V"];
+const firstArg = args[0];
+
+if (firstArg && !firstArg.startsWith("-") && !subcommands.includes(firstArg)) {
+	process.argv.splice(2, 0, "transcribe");
+}
 
 program.parse();

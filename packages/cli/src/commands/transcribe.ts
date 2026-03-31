@@ -73,8 +73,8 @@ export function createTranscribeCommand(): Command {
 							model: modelOverride || config.modelSize,
 							outputDir,
 							steps: [
-								...(parsedInput.type === "url" && !opts.noDownload ? ["download via yt-dlp"] : []),
-								...(!opts.noClean ? ["clean audio via ffmpeg"] : []),
+								...(parsedInput.type === "url" && opts.download !== false ? ["download via yt-dlp"] : []),
+								...(opts.clean !== false ? ["clean audio via ffmpeg"] : []),
 								"transcribe via whisper-cli",
 								"generate .srt and .txt",
 							],
@@ -100,8 +100,8 @@ export function createTranscribeCommand(): Command {
 						: config,
 					outputDir,
 					language,
-					noDownload: opts.noDownload,
-					noClean: opts.noClean,
+					noDownload: opts.download === false,
+					noClean: opts.clean === false,
 					onStep: (step) => {
 						if (spinner) spinner.start(step);
 					},

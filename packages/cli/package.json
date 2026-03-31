@@ -29,6 +29,7 @@
 	},
 	"scripts": {
 		"dev": "bun run bin/trx.ts",
+		"test": "bun test",
 		"check": "biome check --write ."
 	},
 	"dependencies": {
