@@ -1,3 +1,6 @@
 node_modules/
 .env
 *.log
+.vercel
+dist/
+.astro/

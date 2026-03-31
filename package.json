@@ -1,41 +1,5 @@
 {
-	"name": "@crafter/trx",
-	"version": "0.1.0",
-	"description": "Agent-first CLI for audio/video transcription via Whisper",
-	"module": "bin/trx.ts",
-	"type": "module",
-	"license": "MIT",
-	"homepage": "https://github.com/crafter-station/trx",
-	"repository": {
-		"type": "git",
-		"url": "https://github.com/crafter-station/trx"
-	},
-	"keywords": [
-		"transcription",
-		"whisper",
-		"stt",
-		"speech-to-text",
-		"cli",
-		"agent",
-		"subtitles",
-		"srt",
-		"audio",
-		"video",
-		"yt-dlp",
-		"ffmpeg"
-	],
-	"bin": {
-		"trx": "bin/trx.ts"
-	},
-	"scripts": {
-		"dev": "bun run bin/trx.ts",
-		"check": "biome check --write ."
-	},
-	"dependencies": {
-		"@clack/prompts": "^1.1.0",
-		"commander": "^14.0.3"
-	},
-	"devDependencies": {
-		"@types/bun": "latest"
-	}
+	"name": "trx-monorepo",
+	"private": true,
+	"workspaces": ["packages/*"]
 }

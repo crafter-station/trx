@@ -1,0 +1,500 @@
+---
+import { codeToHtml } from "shiki";
+
+const trxTheme = {
+	name: "trx",
+	type: "dark" as const,
+	settings: [
+		{ scope: ["comment", "comment.line", "punctuation.definition.comment"], settings: { foreground: "#64748B", fontStyle: "italic" } },
+		{ scope: ["string", "string.quoted"], settings: { foreground: "#93C5FD" } },
+		{ scope: ["constant", "constant.numeric"], settings: { foreground: "#60A5FA" } },
+		{ scope: ["keyword", "keyword.operator", "keyword.control"], settings: { foreground: "#BFDBFE" } },
+		{ scope: ["entity.name.function", "support.function"], settings: { foreground: "#FFFFFF" } },
+		{ scope: ["variable", "variable.other"], settings: { foreground: "#E2E8F0" } },
+		{ scope: ["punctuation"], settings: { foreground: "#94A3B8" } },
+		{ scope: ["source", "text"], settings: { foreground: "#CBD5E1" } },
+	],
+	colors: {
+		"editor.background": "#0F172A",
+		"editor.foreground": "#CBD5E1",
+	},
+};
+
+const heroCode = `$ bun add -g @crafter/trx
+
+$ trx init
+  ✓ whisper-cli (1.8.4)
+  ✓ yt-dlp (2026.02.04)
+  ✓ ffmpeg (7.1)
+  Select Whisper model:
+  > small (~466 MB) — recommended
+  ✓ Model downloaded
+  Install agent skill? Yes
+  ✓ trx is ready
+
+$ trx "https://youtube.com/watch?v=dQw4w9WgXcQ"
+  Downloading media...
+  Cleaning audio...
+  Transcribing with Whisper...
+  ✓ Done: video.txt, video.srt`;
+const heroHtml = await codeToHtml(heroCode, { lang: "bash", theme: trxTheme });
+
+const commands = [
+	{
+		title: "trx init",
+		desc: "One command. Three deps. Model downloaded. Skill installed.",
+		code: "$ trx init --model small\n  ✓ whisper-cli installed\n  ✓ yt-dlp installed\n  ✓ ffmpeg installed\n  ✓ ggml-small.bin downloaded\n  ✓ Agent skill installed",
+	},
+	{
+		title: "trx <url>",
+		desc: "YouTube, TikTok, Twitter, Instagram. Paste a URL, get text.",
+		code: '$ trx "https://tiktok.com/@dev/video/123"\n  Downloading media...\n  Cleaning audio...\n  Transcribing...\n  ✓ dev-123.txt (1,247 words)',
+	},
+	{
+		title: "trx doctor",
+		desc: "Health check. JSON output. Every dep, every config, one glance.",
+		code: "$ trx doctor --output json\n{\n  \"healthy\": true,\n  \"dependencies\": {\n    \"whisper-cli\": { \"installed\": true },\n    \"ffmpeg\": { \"installed\": true }\n  }\n}",
+	},
+	{
+		title: "trx schema",
+		desc: "Agents introspect what the CLI accepts. No docs needed.",
+		code: "$ trx schema transcribe\n{\n  \"command\": \"transcribe\",\n  \"flags\": {\n    \"--language\": { \"default\": \"auto\" },\n    \"--dry-run\": { \"type\": \"boolean\" },\n    \"--fields\": { \"description\": \"...\" }\n  }\n}",
+	},
+];
+const commandHtmls = await Promise.all(
+	commands.map(c => codeToHtml(c.code, { lang: "bash", theme: trxTheme }))
+);
+
+const useCases = [
+	{ emoji: "📺", label: "YouTube tutorials", cmd: 'trx "https://youtube.com/watch?v=..."' },
+	{ emoji: "🎵", label: "TikTok reels", cmd: 'trx "https://tiktok.com/@user/video/..."' },
+	{ emoji: "🎙️", label: "Podcast episodes", cmd: 'trx podcast.mp3 --language en' },
+	{ emoji: "📱", label: "Instagram stories", cmd: 'trx "https://instagram.com/reel/..."' },
+	{ emoji: "🎤", label: "Meeting recordings", cmd: 'trx meeting.m4a --fields text' },
+	{ emoji: "🐦", label: "Twitter/X videos", cmd: 'trx "https://x.com/user/status/..."' },
+];
+
+const principles = [
+	{ flag: "--output json", desc: "Auto-detect: table for humans, JSON when piped" },
+	{ flag: "--dry-run", desc: "Validate before executing. No surprises." },
+	{ flag: "--fields text", desc: "Save tokens. Only get what you need." },
+	{ flag: "trx schema", desc: "Runtime introspection. No docs needed." },
+	{ flag: "validation", desc: "Reject control chars, path traversals, URL-encoded strings" },
+	{ flag: "SKILL.md", desc: "Agent post-processing. Fix whisper mistakes automatically." },
+];
+
+const stats = [
+	{ value: "0", label: "API Keys" },
+	{ value: "99", label: "Languages" },
+	{ value: "5", label: "Models" },
+	{ value: "1", label: "Command" },
+];
+
+const asciiLogo = `
+ ████████╗██████╗ ██╗  ██╗
+ ╚══██╔══╝██╔══██╗╚██╗██╔╝
+    ██║   ██████╔╝ ╚███╔╝
+    ██║   ██╔══██╗ ██╔██╗
+    ██║   ██║  ██║██╔╝ ██╗
+    ╚═╝   ╚═╝  ╚═╝╚═╝  ╚═╝`.trim();
+---
+
+<html lang="en">
+<head>
+	<meta charset="utf-8" />
+	<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+	<meta name="viewport" content="width=device-width, initial-scale=1" />
+	<title>trx — Agent-First Transcription CLI</title>
+	<meta name="description" content="Transcribe any video or audio with one command. Local Whisper, agent-ready output, self-correcting skills. Open source." />
+	<meta property="og:title" content="trx — Agent-First Transcription CLI" />
+	<meta property="og:description" content="Transcribe any video or audio. Local Whisper, agent-ready JSON, self-correcting skills." />
+	<meta property="og:type" content="website" />
+	<meta property="og:url" content="https://trx.crafter.run" />
+	<meta name="twitter:card" content="summary_large_image" />
+	<link rel="preconnect" href="https://fonts.googleapis.com" />
+	<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+	<link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+	<style>
+		* { margin: 0; padding: 0; box-sizing: border-box; }
+		html { scroll-behavior: smooth; }
+
+		:root {
+			--blue: #2563EB;
+			--blue-light: #60A5FA;
+			--blue-pale: #DBEAFE;
+			--bg: #F8FAFC;
+			--bg-alt: #EFF6FF;
+			--bg-dark: #0F172A;
+			--bg-dark-2: #1E293B;
+			--border: #CBD5E1;
+			--border-light: #E2E8F0;
+			--text: #0F172A;
+			--text-2: #475569;
+			--text-3: #94A3B8;
+			--white: #FFFFFF;
+		}
+
+		body {
+			font-family: 'Inter', system-ui, sans-serif;
+			font-size: 15px;
+			line-height: 1.6;
+			color: var(--text);
+			background: var(--bg);
+			-webkit-font-smoothing: antialiased;
+		}
+
+		.mono { font-family: 'Geist Mono', 'JetBrains Mono', monospace; }
+		.container { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+		/* ═══ Nav ═══ */
+		nav {
+			position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+			background: rgba(248,250,252,0.9); backdrop-filter: blur(12px);
+			border-bottom: 1px solid var(--border-light);
+		}
+		.nav-inner {
+			max-width: 1080px; margin: 0 auto; padding: 0 24px;
+			height: 56px; display: flex; align-items: center; justify-content: space-between;
+		}
+		.nav-brand {
+			font-family: 'Geist Mono', monospace; font-weight: 700; font-size: 18px;
+			color: var(--blue); text-decoration: none; letter-spacing: -0.02em;
+		}
+		.nav-links { display: flex; gap: 20px; align-items: center; }
+		.nav-links a { color: var(--text-2); text-decoration: none; font-size: 13px; font-weight: 500; }
+		.nav-links a:hover { color: var(--text); }
+		.nav-cta {
+			background: var(--blue) !important; color: var(--white) !important;
+			padding: 6px 16px; border-radius: 6px; font-family: 'Geist Mono', monospace; font-size: 12px;
+		}
+		.nav-cta:hover { background: #1D4ED8 !important; }
+
+		/* ═══ Hero ═══ */
+		.hero { padding: 120px 24px 60px; }
+		.hero-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; align-items: center; }
+		.ascii-logo {
+			font-family: 'Geist Mono', monospace; font-size: 11px; line-height: 1.3;
+			color: var(--blue); white-space: pre; margin-bottom: 24px; letter-spacing: 0.02em;
+		}
+		.hero h1 {
+			font-family: 'Geist Mono', monospace;
+			font-size: 32px; font-weight: 700; line-height: 1.2;
+			letter-spacing: -0.03em; color: var(--text); margin-bottom: 16px;
+		}
+		.hero h1 .accent { color: var(--blue); }
+		.hero-desc { font-size: 16px; color: var(--text-2); line-height: 1.7; margin-bottom: 24px; }
+		.hero-actions { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+		.install-line {
+			display: flex; align-items: center; gap: 8px;
+			font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--text-2);
+		}
+		.install-line code {
+			background: var(--bg-alt); border: 1px solid var(--border-light);
+			padding: 6px 12px; border-radius: 6px; color: var(--text); font-size: 13px;
+			font-family: 'Geist Mono', monospace;
+		}
+		.install-label {
+			font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em;
+			color: var(--text-3); font-weight: 600;
+		}
+		.hero-links { display: flex; gap: 16px; margin-top: 8px; }
+		.hero-links a { color: var(--blue); text-decoration: none; font-size: 13px; font-weight: 500; }
+		.hero-links a:hover { text-decoration: underline; }
+
+		.hero-code {
+			border-radius: 12px; overflow: hidden;
+			box-shadow: 0 8px 32px rgba(15,23,42,0.15); border: 1px solid var(--bg-dark-2);
+		}
+		.hero-code :global(pre) {
+			padding: 24px !important; font-size: 12px !important;
+			line-height: 1.8 !important; margin: 0 !important;
+		}
+		.hero-code :global(code) { font-family: 'Geist Mono', monospace !important; }
+
+		/* ═══ Stats ═══ */
+		.stats {
+			padding: 40px 24px;
+			border-top: 2px dashed var(--border);
+			border-bottom: 2px dashed var(--border);
+			background: var(--white);
+		}
+		.stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); }
+		.stat { text-align: center; padding: 12px; }
+		.stat:not(:last-child) { border-right: 2px dashed var(--border); }
+		.stat-value {
+			font-family: 'Geist Mono', monospace; font-size: 36px; font-weight: 700;
+			color: var(--blue); line-height: 1;
+		}
+		.stat-label {
+			font-family: 'Geist Mono', monospace;
+			font-size: 11px; color: var(--text-3); margin-top: 6px;
+			text-transform: uppercase; letter-spacing: 0.1em;
+		}
+
+		/* ═══ Pitch ═══ */
+		.pitch { padding: 80px 24px; background: var(--bg-dark); color: var(--white); }
+		.pitch-inner { max-width: 720px; margin: 0 auto; text-align: center; }
+		.pitch h2 {
+			font-family: 'Geist Mono', monospace; font-size: 28px; font-weight: 700;
+			margin-bottom: 20px; letter-spacing: -0.02em;
+		}
+		.pitch h2 .accent { color: var(--blue-light); }
+		.pitch p { color: #94A3B8; font-size: 16px; line-height: 1.8; margin-bottom: 16px; }
+		.pitch-features {
+			display: flex; gap: 24px; justify-content: center; margin-top: 32px; flex-wrap: wrap;
+		}
+		.pitch-feat {
+			display: flex; align-items: center; gap: 8px;
+			font-family: 'Geist Mono', monospace; font-size: 13px; color: var(--blue-light);
+		}
+		.pitch-feat .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--blue-light); }
+
+		/* ═══ Commands ═══ */
+		.commands { padding: 80px 24px; background: var(--bg-alt); }
+		.section-label {
+			font-family: 'Geist Mono', monospace;
+			font-size: 11px; font-weight: 600; text-transform: uppercase;
+			letter-spacing: 0.12em; color: var(--blue); margin-bottom: 8px;
+		}
+		.section-title {
+			font-family: 'Geist Mono', monospace;
+			font-size: 24px; font-weight: 700; color: var(--text);
+			letter-spacing: -0.02em; margin-bottom: 40px;
+		}
+		.commands-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+		.cmd-card {
+			background: var(--white); border: 1px solid var(--border-light);
+			border-radius: 12px; overflow: hidden;
+			transition: border-color 150ms, box-shadow 150ms;
+		}
+		.cmd-card:hover {
+			border-color: var(--blue); box-shadow: 0 4px 16px rgba(37,99,235,0.08);
+		}
+		.cmd-card-header { padding: 20px 20px 12px; }
+		.cmd-card-title {
+			font-family: 'Geist Mono', monospace; font-size: 16px; font-weight: 700;
+			color: var(--blue); margin-bottom: 4px;
+		}
+		.cmd-card-desc { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+		.cmd-card :global(pre) {
+			padding: 16px 20px !important; font-size: 11px !important;
+			line-height: 1.7 !important; margin: 0 !important;
+			border-top: 1px solid rgba(255,255,255,0.05);
+		}
+		.cmd-card :global(code) { font-family: 'Geist Mono', monospace !important; }
+
+		/* ═══ Agent-First ═══ */
+		.agent-first { padding: 80px 24px; }
+		.principles-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+		.principle {
+			padding: 20px; border: 2px dashed var(--border);
+			border-radius: 8px; transition: border-color 150ms;
+		}
+		.principle:hover { border-color: var(--blue); }
+		.principle-flag {
+			font-family: 'Geist Mono', monospace; font-size: 14px; font-weight: 700;
+			color: var(--blue); margin-bottom: 6px;
+		}
+		.principle-desc { font-size: 13px; color: var(--text-2); line-height: 1.5; }
+
+		/* ═══ Use Cases ═══ */
+		.use-cases { padding: 80px 24px; background: var(--bg-dark); color: var(--white); }
+		.use-cases .section-label { color: var(--blue-light); }
+		.use-cases .section-title { color: var(--white); }
+		.cases-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+		.case-card {
+			background: var(--bg-dark-2); border: 1px solid rgba(255,255,255,0.08);
+			border-radius: 8px; padding: 20px; transition: border-color 150ms;
+		}
+		.case-card:hover { border-color: var(--blue-light); }
+		.case-emoji { font-size: 24px; margin-bottom: 8px; }
+		.case-label { font-size: 14px; font-weight: 600; color: var(--white); margin-bottom: 8px; }
+		.case-cmd {
+			font-family: 'Geist Mono', monospace; font-size: 11px; color: var(--blue-light);
+			background: rgba(37,99,235,0.1); padding: 8px 10px; border-radius: 4px;
+			word-break: break-all;
+		}
+
+		/* ═══ Footer ═══ */
+		footer {
+			padding: 40px 24px; border-top: 2px dashed var(--border);
+			text-align: center;
+		}
+		.footer-logo { margin-bottom: 12px; }
+		.footer-links { display: flex; gap: 24px; justify-content: center; margin-bottom: 12px; }
+		.footer-links a { color: var(--text-2); text-decoration: none; font-size: 13px; }
+		.footer-links a:hover { color: var(--blue); }
+		.footer-copy {
+			font-family: 'Geist Mono', monospace;
+			font-size: 11px; color: var(--text-3);
+		}
+
+		/* ═══ Responsive ═══ */
+		@media (max-width: 768px) {
+			.hero-inner { grid-template-columns: 1fr; }
+			.hero-code { display: none; }
+			.ascii-logo { font-size: 8px; }
+			.hero h1 { font-size: 24px; }
+			.stats-grid { grid-template-columns: repeat(2, 1fr); }
+			.stat:nth-child(2) { border-right: none; }
+			.stat:nth-child(1), .stat:nth-child(2) { border-bottom: 2px dashed var(--border); }
+			.commands-grid { grid-template-columns: 1fr; }
+			.principles-grid { grid-template-columns: 1fr; }
+			.cases-grid { grid-template-columns: 1fr; }
+			.pitch-features { flex-direction: column; align-items: center; }
+		}
+	</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+	<div class="nav-inner">
+		<a href="/" class="nav-brand">trx</a>
+		<div class="nav-links">
+			<a href="#commands">Commands</a>
+			<a href="#use-cases">Use Cases</a>
+			<a href="https://github.com/crafter-station/trx" target="_blank" rel="noopener">GitHub</a>
+			<a href="https://www.npmjs.com/package/@crafter/trx" target="_blank" rel="noopener" class="nav-cta">npm install</a>
+		</div>
+	</div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+	<div class="container">
+		<div class="hero-inner">
+			<div>
+				<pre class="ascii-logo">{asciiLogo}</pre>
+				<h1>Transcribe anything.<br/>Let agents <span class="accent">fix the rest</span>.</h1>
+				<p class="hero-desc">
+					Local Whisper transcription with agent-ready output.
+					One command to transcribe any URL or file. Ship with a skill that auto-corrects whisper mistakes.
+				</p>
+				<div class="hero-actions">
+					<div>
+						<div class="install-label">Install</div>
+						<div class="install-line"><code>bun add -g @crafter/trx</code></div>
+					</div>
+					<div>
+						<div class="install-label">Agent Skill</div>
+						<div class="install-line"><code>npx skills add crafter-station/trx -g</code></div>
+					</div>
+				</div>
+				<div class="hero-links">
+					<a href="https://github.com/crafter-station/trx">View on GitHub &rarr;</a>
+					<a href="https://www.npmjs.com/package/@crafter/trx">npm &rarr;</a>
+				</div>
+			</div>
+			<div class="hero-code" set:html={heroHtml} />
+		</div>
+	</div>
+</section>
+
+<!-- Stats -->
+<section class="stats">
+	<div class="container">
+		<div class="stats-grid">
+			{stats.map(s => (
+				<div class="stat">
+					<div class="stat-value">{s.value}</div>
+					<div class="stat-label">{s.label}</div>
+				</div>
+			))}
+		</div>
+	</div>
+</section>
+
+<!-- Pitch -->
+<section class="pitch">
+	<div class="pitch-inner">
+		<h2>Text is not enough.<br/><span class="accent">Videos are signal.</span></h2>
+		<p>
+			There's a TikTok reel, a YouTube tutorial, an Instagram story with exactly what you need.
+			But you can't search inside video. You can't pipe it to an agent. You can't grep it.
+		</p>
+		<p>
+			trx turns any video into text with one command. Whisper runs locally -- no API keys, no rate limits, no cost.
+			The small model handles 99 languages on your CPU. And the agent skill fixes what Whisper gets wrong.
+		</p>
+		<div class="pitch-features">
+			<div class="pitch-feat"><span class="dot"></span> Free & local</div>
+			<div class="pitch-feat"><span class="dot"></span> 99 languages</div>
+			<div class="pitch-feat"><span class="dot"></span> Agent self-correction</div>
+			<div class="pitch-feat"><span class="dot"></span> Any URL or file</div>
+		</div>
+	</div>
+</section>
+
+<!-- Commands -->
+<section class="commands" id="commands">
+	<div class="container">
+		<div class="section-label">// commands</div>
+		<div class="section-title">Four commands. Zero config.</div>
+		<div class="commands-grid">
+			{commands.map((cmd, i) => (
+				<div class="cmd-card">
+					<div class="cmd-card-header">
+						<div class="cmd-card-title">{cmd.title}</div>
+						<div class="cmd-card-desc">{cmd.desc}</div>
+					</div>
+					<div set:html={commandHtmls[i]} />
+				</div>
+			))}
+		</div>
+	</div>
+</section>
+
+<!-- Agent-First -->
+<section class="agent-first">
+	<div class="container">
+		<div class="section-label">// agent-first design</div>
+		<div class="section-title">Built for agents. Works for humans.</div>
+		<div class="principles-grid">
+			{principles.map(p => (
+				<div class="principle">
+					<div class="principle-flag">{p.flag}</div>
+					<div class="principle-desc">{p.desc}</div>
+				</div>
+			))}
+		</div>
+	</div>
+</section>
+
+<!-- Use Cases -->
+<section class="use-cases" id="use-cases">
+	<div class="container">
+		<div class="section-label">// use cases</div>
+		<div class="section-title">What people transcribe with trx</div>
+		<div class="cases-grid">
+			{useCases.map(uc => (
+				<div class="case-card">
+					<div class="case-emoji">{uc.emoji}</div>
+					<div class="case-label">{uc.label}</div>
+					<div class="case-cmd">$ {uc.cmd}</div>
+				</div>
+			))}
+		</div>
+	</div>
+</section>
+
+<!-- Footer -->
+<footer>
+	<div class="container">
+		<div class="footer-logo">
+			<svg viewBox="0 0 500 80" xmlns="http://www.w3.org/2000/svg" width="160" height="26">
+				<g transform="translate(0, 5) scale(0.27)"><path d="M118.238 16.262C111.482 11.4 99.9003 5.62505 92.2517 3.26931C74.9754 -2.31209 61.2312 0.473844 52.1188 3.50057C34.3839 9.3909 23.1637 17.3398 12.9798 32.0237C-3.018 54.7384 -1.30627 92.0001 17.4396 113.282C21.6313 118.385 23.9203 117.58 40.6062 105.794C41.1838 105.243 38.9626 101.57 35.6118 97.3194C28.0736 87.6862 23.7841 70.2632 26.209 60.5011C34.074 29.8239 72.1683 13.8835 96.3841 31.0488C101.735 34.7695 118.578 50.1432 133.719 65.2112C156.435 87.3932 163.188 92.535 168.887 92.0615C174.586 91.588 176.608 89.6589 177.27 83.5096C178.226 76.8049 175.724 72.8474 162.814 60.893C154.116 52.642 147.113 45.2566 147.134 43.8571C147.151 42.7375 153.199 38.0697 160.665 33.7035C208.922 4.47877 259.519 64.8793 219.089 103.462C213.891 108.422 204.705 113.602 198.705 115.191C191.85 116.767 160.245 117.687 120.978 117.092C47.5669 115.979 43.5706 116.758 23.9629 133.539C-1.12747 155.276 -7.39134 192.976 9.54962 220.67C31.485 256.839 79.721 266.529 114.252 241.576L126.916 232.249L141.283 241.986C164.663 258.018 183.68 261.387 206.842 254.179C253.172 239.483 271.118 182.082 241.827 143.002C238.477 138.752 236.774 138.446 232.187 140.616C218.126 148.242 218.419 147.686 226.416 164.606C232.48 177.576 233.542 182.632 231.971 192.407C227.614 216.978 208.584 233.207 184.682 232.845C166.187 232.564 160.267 228.835 126.619 195.569C108.947 178.502 92.6562 164.257 90.3799 164.222C86.1118 164.158 76.8749 172.697 76.8113 176.895C76.7943 178.015 84.341 187.088 93.8711 196.752L110.969 214.089L100.607 221.771C64.0584 248.374 13.049 215.124 25.6449 172.76C29.5392 159.94 42.8446 145.864 55.4323 141.575C60.2992 139.689 90.1929 139.023 130.598 139.635C204.863 140.762 213.705 139.496 230.998 125.2C282.576 83.4269 254.198 2.92565 187.611 2.19579C168.262 1.90235 157.675 5.66133 139.549 18.5449L130.342 25.1245L118.238 16.262Z" fill="#94A3B8"/></g>
+				<text x="90" y="55" font-family="Inter, system-ui, sans-serif" font-size="36" font-weight="900" letter-spacing="-0.02em" fill="#94A3B8">CRAFTER STATION</text>
+			</svg>
+		</div>
+		<div class="footer-links">
+			<a href="https://github.com/crafter-station/trx">GitHub</a>
+			<a href="https://www.npmjs.com/package/@crafter/trx">npm</a>
+			<a href="https://crafterstation.com">Crafter Station</a>
+		</div>
+		<div class="footer-copy">Open source. MIT License.</div>
+	</div>
+</footer>
+
+</body>
+</html>
