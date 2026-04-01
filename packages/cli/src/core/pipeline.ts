@@ -64,7 +64,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 			txt: result.txtPath,
 		},
 		metadata: {
-			language: opts.language || config.language,
+			language: opts.language || "auto",
 			model: config.modelSize,
 		},
 		text: result.text,

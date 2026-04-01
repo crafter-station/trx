@@ -95,7 +95,7 @@ export function createInitCommand(): Command {
 	return new Command("init")
 		.description("Install dependencies and download Whisper model")
 		.option("-m, --model <size>", "whisper model size", "small")
-		.option("-l, --language <code>", "default language", "auto")
+		.option("-l, --language <code>", "default language (auto = detect from audio)", "auto")
 		.action(async (opts, cmd) => {
 			const format: OutputFormat = cmd.optsWithGlobals().output;
 			const isTTY = process.stdout.isTTY && format !== "json";

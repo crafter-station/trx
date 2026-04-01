@@ -26,7 +26,7 @@ export function createTranscribeCommand(): Command {
 	return new Command("transcribe")
 		.description("Transcribe audio/video from URL or local file")
 		.argument("<input>", "URL or file path to transcribe")
-		.option("-l, --language <lang>", "language code (default: from config)")
+		.option("-l, --language <lang>", "force language (default: auto-detect)")
 		.option("-m, --model <size>", "override model size")
 		.option("--fields <fields>", "limit output fields: text,srt,metadata,files")
 		.option("--dry-run", "validate input without transcribing")
@@ -70,7 +70,7 @@ export function createTranscribeCommand(): Command {
 							dryRun: true,
 							input: parsedInput.value,
 							inputType: parsedInput.type,
-							language: language || config.language,
+							language: language || "auto",
 							model: modelOverride || config.modelSize,
 							outputDir,
 							steps: [
@@ -105,7 +105,7 @@ export function createTranscribeCommand(): Command {
 					inputType: parsedInput.type,
 					config: effectiveConfig,
 					outputDir,
-					language,
+					language: language || "auto",
 					noDownload: opts.download === false,
 					noClean: opts.clean === false,
 					onStep: (step) => {
