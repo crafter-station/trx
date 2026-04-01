@@ -7,6 +7,7 @@ export interface TrxConfig {
 	modelSize: string;
 	language: string;
 	threads: number;
+	wordTimestamps: boolean;
 	whisperFlags: {
 		suppressNst: boolean;
 		noFallback: boolean;
@@ -61,6 +62,7 @@ export function defaultConfig(modelSize: string, language: string): TrxConfig {
 		modelSize,
 		language,
 		threads: 8,
+		wordTimestamps: false,
 		whisperFlags: {
 			suppressNst: true,
 			noFallback: true,

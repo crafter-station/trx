@@ -32,6 +32,7 @@ export function createTranscribeCommand(): Command {
 		.option("--dry-run", "validate input without transcribing")
 		.option("--json <payload>", "raw JSON input for agents")
 		.option("--output-dir <dir>", "output directory", ".")
+		.option("-w, --words", "word-level timestamps in SRT")
 		.option("--no-download", "skip yt-dlp (input must be local)")
 		.option("--no-clean", "skip ffmpeg audio cleaning")
 		.action(async (inputArg, opts, cmd) => {
@@ -89,16 +90,20 @@ export function createTranscribeCommand(): Command {
 					spinner = p.spinner();
 				}
 
+				const effectiveConfig = modelOverride
+					? {
+							...config,
+							modelSize: modelOverride,
+							modelPath: config.modelPath.replace(/ggml-\w+\.bin/, `ggml-${modelOverride}.bin`),
+						}
+					: { ...config };
+
+				if (opts.words) effectiveConfig.wordTimestamps = true;
+
 				const result = await runPipeline({
 					input: parsedInput.value,
 					inputType: parsedInput.type,
-					config: modelOverride
-						? {
-								...config,
-								modelSize: modelOverride,
-								modelPath: config.modelPath.replace(/ggml-\w+\.bin/, `ggml-${modelOverride}.bin`),
-							}
-						: config,
+					config: effectiveConfig,
 					outputDir,
 					language,
 					noDownload: opts.download === false,

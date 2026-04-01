@@ -32,7 +32,7 @@ export async function transcribe(
 		"-t",
 		String(config.threads),
 		"--max-len",
-		"0",
+		config.wordTimestamps ? "1" : "0",
 		"--output-srt",
 	];
 
