@@ -44,7 +44,10 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 	}
 
 	const name = basename(inputFile).replace(/\.[^.]+$/, "");
-	const wavPath = resolve(outputDir, `${name}.wav`);
+	let wavPath = resolve(outputDir, `${name}.wav`);
+	if (wavPath === resolve(inputFile)) {
+		wavPath = resolve(outputDir, `${name}_clean.wav`);
+	}
 
 	if (!opts.noClean) {
 		opts.onStep?.("Cleaning audio...");
