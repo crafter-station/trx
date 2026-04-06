@@ -14,7 +14,7 @@ const rendered = await Promise.all(
 ---
 
 <Base title="Docs" description="Documentation for the trx CLI — commands, configuration, and agent skill.">
-	<div class="docs-layout">
+	<div class="docs-wrapper">
 		<aside class="docs-sidebar">
 			<div class="sidebar-inner">
 				<div class="sidebar-title">Documentation</div>
@@ -38,14 +38,14 @@ const rendered = await Promise.all(
 	</div>
 </Base>
 
-<style>
-	.docs-layout {
+<style is:global>
+	.docs-wrapper {
 		display: grid;
-		grid-template-columns: 220px 1fr;
-		gap: 40px;
+		grid-template-columns: 200px 1fr;
+		gap: 48px;
 		max-width: 1080px;
 		margin: 0 auto;
-		padding: 80px 24px 60px;
+		padding: 96px 24px 60px;
 	}
 
 	.docs-sidebar {
@@ -54,7 +54,7 @@ const rendered = await Promise.all(
 		align-self: start;
 	}
 	.sidebar-inner {
-		padding: 16px 0;
+		padding: 0;
 	}
 	.sidebar-title {
 		font-family: 'Geist Mono', monospace;
@@ -62,7 +62,7 @@ const rendered = await Promise.all(
 		letter-spacing: 0.12em; color: var(--blue); margin-bottom: 16px;
 	}
 	.sidebar-nav {
-		display: flex; flex-direction: column; gap: 4px;
+		display: flex; flex-direction: column; gap: 2px;
 	}
 	.sidebar-link {
 		font-size: 13px; color: var(--text-2); text-decoration: none;
@@ -77,18 +77,19 @@ const rendered = await Promise.all(
 
 	.docs-main {
 		min-width: 0;
+		max-width: 760px;
 	}
 	.docs-section {
 		padding: 32px 0;
 		border-bottom: 2px dashed var(--border);
 	}
-	.docs-section:first-child { padding-top: 16px; }
+	.docs-section:first-child { padding-top: 0; }
 	.docs-section:last-child { border-bottom: none; }
 
 	@media (max-width: 768px) {
-		.docs-layout {
+		.docs-wrapper {
 			grid-template-columns: 1fr;
-			padding: 72px 16px 40px;
+			padding: 80px 16px 40px;
 		}
 		.docs-sidebar { display: none; }
 	}

@@ -166,6 +166,20 @@ const fullTitle = title === "trx" ? "trx — Agent-First Transcription CLI" : `$
 		.prose a { color: var(--blue); text-decoration: none; }
 		.prose a:hover { text-decoration: underline; }
 
+		.prose pre {
+			position: relative;
+		}
+		.copy-btn {
+			position: absolute; top: 8px; right: 8px;
+			background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.1);
+			color: var(--text-3); border-radius: 6px; padding: 4px 8px;
+			font-family: 'Geist Mono', monospace; font-size: 11px;
+			cursor: pointer; transition: all 150ms; opacity: 0;
+		}
+		.prose pre:hover .copy-btn { opacity: 1; }
+		.copy-btn:hover { background: rgba(255,255,255,0.15); color: var(--white); }
+		.copy-btn.copied { color: var(--blue-light); }
+
 		@media (max-width: 768px) {
 			.page-content { padding: 80px 16px 40px; }
 			.page-content h1 { font-size: 22px; }
@@ -205,5 +219,22 @@ const fullTitle = title === "trx" ? "trx — Agent-First Transcription CLI" : `$
 </footer>
 
 <Analytics />
+
+<script>
+document.querySelectorAll('.prose pre').forEach(pre => {
+	const btn = document.createElement('button');
+	btn.className = 'copy-btn';
+	btn.textContent = 'Copy';
+	btn.addEventListener('click', async () => {
+		const code = pre.querySelector('code');
+		if (!code) return;
+		await navigator.clipboard.writeText(code.textContent || '');
+		btn.textContent = 'Copied';
+		btn.classList.add('copied');
+		setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+	});
+	pre.appendChild(btn);
+});
+</script>
 </body>
 </html>
