@@ -1,5 +1,6 @@
 import { readFileSync, statSync } from "node:fs";
 import type { OpenAIModel } from "../utils/config.ts";
+import { spawn } from "../utils/spawn.ts";
 
 export interface OpenAITranscribeResult {
 	srtPath: string;
@@ -30,6 +31,24 @@ export function getOpenAIKey(): string {
 
 function supportsVerboseJson(model: OpenAIModel): boolean {
 	return model === "whisper-1";
+}
+
+async function probeDuration(audioPath: string): Promise<number> {
+	const result = await spawn([
+		"ffprobe",
+		"-v",
+		"quiet",
+		"-show_entries",
+		"format=duration",
+		"-of",
+		"csv=p=0",
+		audioPath,
+	]);
+	if (result.exitCode === 0) {
+		const dur = Number.parseFloat(result.stdout.trim());
+		if (!Number.isNaN(dur) && dur > 0) return dur;
+	}
+	return 0;
 }
 
 export async function transcribeOpenAI(
@@ -78,7 +97,14 @@ export async function transcribeOpenAI(
 
 	const json = (await response.json()) as VerboseResponse;
 	const text = json.text || "";
-	const srtContent = json.segments ? segmentsToSrt(json.segments) : textToMinimalSrt(text);
+
+	let srtContent: string;
+	if (json.segments) {
+		srtContent = segmentsToSrt(json.segments);
+	} else {
+		const duration = await probeDuration(audioPath);
+		srtContent = textToSrt(text, duration);
+	}
 
 	const srtPath = `${audioPath}.srt`;
 	const txtPath = audioPath.replace(/\.[^.]+$/, ".txt");
@@ -103,7 +129,8 @@ function segmentsToSrt(segments: VerboseSegment[]): string {
 		.join("\n");
 }
 
-function textToMinimalSrt(text: string): string {
+function textToSrt(text: string, duration: number): string {
 	if (!text.trim()) return "";
-	return `1\n00:00:00,000 --> 99:59:59,999\n${text.trim()}\n`;
+	const end = duration > 0 ? formatTimestamp(duration) : formatTimestamp(0);
+	return `1\n${formatTimestamp(0)} --> ${end}\n${text.trim()}\n`;
 }
