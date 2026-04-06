@@ -45,7 +45,13 @@ export function ensureTrxDir(): void {
 export function readConfig(): TrxConfig | null {
 	if (!existsSync(CONFIG_PATH)) return null;
 	try {
-		return JSON.parse(readFileSync(CONFIG_PATH, "utf-8")) as TrxConfig;
+		const saved = JSON.parse(readFileSync(CONFIG_PATH, "utf-8"));
+		const defaults = defaultConfig(saved.modelSize || "small", saved.language || "auto");
+		return {
+			...defaults,
+			...saved,
+			whisperFlags: { ...defaults.whisperFlags, ...(saved.whisperFlags || {}) },
+		};
 	} catch {
 		return null;
 	}
