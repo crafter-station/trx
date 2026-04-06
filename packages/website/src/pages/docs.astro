@@ -14,83 +14,87 @@ const rendered = await Promise.all(
 ---
 
 <Base title="Docs" description="Documentation for the trx CLI — commands, configuration, and agent skill.">
-	<div class="docs-wrapper">
-		<aside class="docs-sidebar">
-			<div class="sidebar-inner">
-				<div class="sidebar-title">Documentation</div>
-				<nav class="sidebar-nav">
+	<div class="docs-page">
+		<div class="docs-container">
+			<aside class="docs-nav">
+				<div class="docs-nav-label">Documentation</div>
+				<nav>
 					{sorted.map(entry => (
-						<a href={`#${entry.id}`} class="sidebar-link">{entry.data.title}</a>
+						<a href={`#${entry.id}`} class="docs-nav-link">{entry.data.title}</a>
 					))}
 				</nav>
-			</div>
-		</aside>
+			</aside>
 
-		<main class="docs-main">
-			{rendered.map(({ entry, Content }) => (
-				<section id={entry.id} class="docs-section">
-					<div class="prose">
-						<Content />
-					</div>
-				</section>
-			))}
-		</main>
+			<main class="docs-body">
+				{rendered.map(({ entry, Content }) => (
+					<section id={entry.id} class="docs-block">
+						<div class="prose">
+							<Content />
+						</div>
+					</section>
+				))}
+			</main>
+		</div>
 	</div>
 </Base>
 
 <style is:global>
-	.docs-wrapper {
-		display: grid;
-		grid-template-columns: 200px 1fr;
+	.docs-page {
+		padding-top: 56px;
+	}
+	.docs-container {
+		display: flex;
 		gap: 48px;
-		max-width: 1080px;
+		max-width: 960px;
 		margin: 0 auto;
-		padding: 96px 24px 60px;
+		padding: 40px 24px 60px;
 	}
 
-	.docs-sidebar {
+	.docs-nav {
 		position: sticky;
-		top: 72px;
-		align-self: start;
+		top: 80px;
+		align-self: flex-start;
+		flex-shrink: 0;
+		width: 180px;
 	}
-	.sidebar-inner {
-		padding: 0;
-	}
-	.sidebar-title {
+	.docs-nav-label {
 		font-family: 'Geist Mono', monospace;
 		font-size: 11px; font-weight: 600; text-transform: uppercase;
 		letter-spacing: 0.12em; color: var(--blue); margin-bottom: 16px;
 	}
-	.sidebar-nav {
+	.docs-nav nav {
 		display: flex; flex-direction: column; gap: 2px;
 	}
-	.sidebar-link {
+	.docs-nav-link {
 		font-size: 13px; color: var(--text-2); text-decoration: none;
 		padding: 6px 12px; border-radius: 6px;
 		border-left: 2px solid transparent;
 		transition: all 150ms;
+		display: block;
 	}
-	.sidebar-link:hover {
+	.docs-nav-link:hover {
 		color: var(--text); background: var(--bg-alt);
 		border-left-color: var(--blue);
 	}
 
-	.docs-main {
+	.docs-body {
+		flex: 1;
 		min-width: 0;
-		max-width: 760px;
+		max-width: 680px;
 	}
-	.docs-section {
+	.docs-block {
 		padding: 32px 0;
 		border-bottom: 2px dashed var(--border);
 	}
-	.docs-section:first-child { padding-top: 0; }
-	.docs-section:last-child { border-bottom: none; }
+	.docs-block:first-child { padding-top: 0; }
+	.docs-block:last-child { border-bottom: none; }
 
 	@media (max-width: 768px) {
-		.docs-wrapper {
-			grid-template-columns: 1fr;
-			padding: 80px 16px 40px;
+		.docs-container {
+			flex-direction: column;
+			padding: 24px 16px 40px;
 		}
-		.docs-sidebar { display: none; }
+		.docs-nav { display: none; }
+		.docs-body { max-width: 100%; }
 	}
 </style>
