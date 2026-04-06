@@ -161,7 +161,9 @@ export function createTranscribeCommand(): Command {
 
 				if (isTTY) {
 					const wordCount = result.text.split(/\s+/).filter(Boolean).length;
-					p.note(`${wordCount} words transcribed\n\nopen ${result.files.txt}`, "Next");
+					const openCmd = process.platform === "darwin" ? "open" : process.platform === "win32" ? "start" : "xdg-open";
+					const quotedPath = result.files.txt.includes(" ") ? `"${result.files.txt}"` : result.files.txt;
+					p.note(`${wordCount} words transcribed\n\n${openCmd} ${quotedPath}`, "Next");
 					process.exit(0);
 				}
 			} catch (e) {
