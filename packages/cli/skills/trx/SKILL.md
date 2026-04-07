@@ -8,7 +8,7 @@ description: |
   transcription, (5) user asks to extract text from a video.
 metadata:
   author: Railly Hugo
-  version: "0.1.0"
+  version: "0.4.0"
 ---
 
 # trx -- Agent-First Transcription CLI
@@ -47,6 +47,27 @@ Agent-optimized (text only, saves tokens):
 ```bash
 trx transcribe <input> --fields text --output json
 ```
+
+### Backends (v0.4.0+)
+
+trx supports two backends: local Whisper (default) and OpenAI API.
+
+```bash
+# Local Whisper (default, offline, free)
+trx transcribe <input> --backend local
+
+# OpenAI API (faster, SOTA accuracy, requires OPENAI_API_KEY)
+trx transcribe <input> --backend openai
+```
+
+OpenAI models:
+- `gpt-4o-transcribe` — SOTA accuracy (default for openai backend)
+- `gpt-4o-mini-transcribe` — cheapest
+- `whisper-1` — legacy, supports per-segment SRT timestamps
+
+Local models: `tiny`, `base`, `small`, `medium`, `large-v3-turbo`, `large`.
+
+Set backend persistently via `trx init --backend openai` or in config.
 
 ### 3. Post-process (fix whisper mistakes)
 
@@ -93,8 +114,9 @@ trx schema init
 
 | Flag | Description | Default |
 |------|-------------|---------|
+| `--backend <name>` | `local` or `openai` | from config |
 | `--language <code>` | ISO 639-1 language code | `auto` (from config) |
-| `--model <size>` | Override model: tiny, base, small, medium, large | from config |
+| `--model <size>` | Override model: tiny, base, small, medium, large-v3-turbo, large, gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1 | from config |
 | `--output-dir <dir>` | Output directory | `.` (cwd) |
 | `--no-download` | Skip yt-dlp (local files only) | false |
 | `--no-clean` | Skip ffmpeg audio cleaning | false |
