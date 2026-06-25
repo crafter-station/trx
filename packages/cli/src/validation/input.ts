@@ -175,6 +175,9 @@ export type WhisperModel = (typeof VALID_LOCAL_MODELS)[number];
 const VALID_OPENAI_MODELS = ["gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"] as const;
 export type OpenAITranscribeModel = (typeof VALID_OPENAI_MODELS)[number];
 
+const VALID_PEGASUS_MODELS = ["pegasus1.5", "pegasus1.2"] as const;
+export type PegasusTranscribeModel = (typeof VALID_PEGASUS_MODELS)[number];
+
 export function validateModel(model: string): WhisperModel {
 	const cleaned = model.trim().toLowerCase();
 	if (!VALID_LOCAL_MODELS.includes(cleaned as WhisperModel)) {
@@ -191,10 +194,18 @@ export function validateOpenAIModel(model: string): OpenAITranscribeModel {
 	return cleaned as OpenAITranscribeModel;
 }
 
-export function validateBackend(backend: string): "local" | "openai" {
+export function validatePegasusModel(model: string): PegasusTranscribeModel {
+	const cleaned = model.trim().toLowerCase();
+	if (!VALID_PEGASUS_MODELS.includes(cleaned as PegasusTranscribeModel)) {
+		throw new Error(`Unknown Pegasus model: "${model}". Available: ${VALID_PEGASUS_MODELS.join(", ")}`);
+	}
+	return cleaned as PegasusTranscribeModel;
+}
+
+export function validateBackend(backend: string): "local" | "openai" | "pegasus" {
 	const cleaned = backend.trim().toLowerCase();
-	if (cleaned !== "local" && cleaned !== "openai") {
-		throw new Error(`Unknown backend: "${backend}". Available: local, openai`);
+	if (cleaned !== "local" && cleaned !== "openai" && cleaned !== "pegasus") {
+		throw new Error(`Unknown backend: "${backend}". Available: local, openai, pegasus`);
 	}
 	return cleaned;
 }

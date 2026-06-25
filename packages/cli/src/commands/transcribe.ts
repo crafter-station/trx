@@ -4,7 +4,14 @@ import { Command } from "commander";
 import { type PipelineResult, runPipeline } from "../core/pipeline.ts";
 import { readConfig } from "../utils/config.ts";
 import { type OutputFormat, output, outputError } from "../utils/output.ts";
-import { validateBackend, validateInput, validateLanguage, validateModel, validateOpenAIModel } from "../validation/input.ts";
+import {
+	validateBackend,
+	validateInput,
+	validateLanguage,
+	validateModel,
+	validateOpenAIModel,
+	validatePegasusModel,
+} from "../validation/input.ts";
 
 function filterFields(result: PipelineResult, fields?: string): Record<string, unknown> {
 	if (!fields) return result;
@@ -33,7 +40,7 @@ export function createTranscribeCommand(): Command {
 		.option("--json <payload>", "raw JSON input for agents")
 		.option("--output-dir <dir>", "output directory", ".")
 		.option("-w, --words", "word-level timestamps in SRT")
-		.option("-b, --backend <backend>", "transcription backend (local, openai)")
+		.option("-b, --backend <backend>", "transcription backend (local, openai, pegasus)")
 		.option("--no-download", "skip yt-dlp (input must be local)")
 		.option("--no-clean", "skip ffmpeg audio cleaning")
 		.action(async (inputArg, opts, cmd) => {
@@ -67,6 +74,8 @@ export function createTranscribeCommand(): Command {
 				if (modelOverride) {
 					if (effectiveBackend === "openai") {
 						validateOpenAIModel(modelOverride);
+					} else if (effectiveBackend === "pegasus") {
+						validatePegasusModel(modelOverride);
 					} else {
 						validateModel(modelOverride);
 					}
@@ -75,10 +84,20 @@ export function createTranscribeCommand(): Command {
 				const outputDir = resolve(opts.outputDir);
 
 				if (opts.dryRun) {
-					const transcribeStep =
-						effectiveBackend === "openai"
-							? `transcribe via OpenAI ${modelOverride || config.openai.model}`
-							: "transcribe via whisper-cli";
+					let transcribeStep: string;
+					let model: string;
+					// Pegasus reads the video URL server-side, so it has no local download/clean steps.
+					const isPegasus = effectiveBackend === "pegasus";
+					if (effectiveBackend === "openai") {
+						model = modelOverride || config.openai.model;
+						transcribeStep = `transcribe via OpenAI ${model}`;
+					} else if (isPegasus) {
+						model = modelOverride || config.pegasus.model;
+						transcribeStep = `transcribe via TwelveLabs ${model}`;
+					} else {
+						model = modelOverride || config.modelSize;
+						transcribeStep = "transcribe via whisper-cli";
+					}
 					output(format, {
 						json: {
 							dryRun: true,
@@ -86,14 +105,11 @@ export function createTranscribeCommand(): Command {
 							inputType: parsedInput.type,
 							backend: effectiveBackend,
 							language: language || "auto",
-							model:
-								effectiveBackend === "openai"
-									? modelOverride || config.openai.model
-									: modelOverride || config.modelSize,
+							model,
 							outputDir,
 							steps: [
-								...(parsedInput.type === "url" && opts.download !== false ? ["download via yt-dlp"] : []),
-								...(opts.clean !== false ? ["clean audio via ffmpeg"] : []),
+								...(!isPegasus && parsedInput.type === "url" && opts.download !== false ? ["download via yt-dlp"] : []),
+								...(!isPegasus && opts.clean !== false ? ["clean audio via ffmpeg"] : []),
 								transcribeStep,
 								"generate .srt and .txt",
 							],
@@ -111,6 +127,8 @@ export function createTranscribeCommand(): Command {
 				const effectiveConfig = { ...config };
 				if (effectiveBackend === "openai" && modelOverride) {
 					effectiveConfig.openai = { ...config.openai, model: modelOverride as typeof config.openai.model };
+				} else if (effectiveBackend === "pegasus" && modelOverride) {
+					effectiveConfig.pegasus = { ...config.pegasus, model: modelOverride as typeof config.pegasus.model };
 				} else if (modelOverride) {
 					effectiveConfig.modelSize = modelOverride;
 					effectiveConfig.modelPath = config.modelPath.replace(/ggml-[\w.-]+\.bin/, `ggml-${modelOverride}.bin`);

@@ -49,3 +49,17 @@ export OPENAI_API_KEY="sk-..."
 trx init --backend openai
 trx recording.mp4 -b openai
 ```
+
+## TwelveLabs Pegasus (optional)
+
+Transcribe a video straight from its URL using [TwelveLabs](https://twelvelabs.io)
+Pegasus video understanding — no local download, model, or audio cleaning
+required. It reads the video server-side and uses the full audiovisual context.
+
+```bash
+export TWELVELABS_API_KEY="tlk_..."
+trx "https://example.com/talk.mp4" -b pegasus
+```
+
+Pegasus needs a direct media URL (not a YouTube/Drive share link). Grab a free
+API key at [twelvelabs.io](https://twelvelabs.io) — there's a generous free tier.

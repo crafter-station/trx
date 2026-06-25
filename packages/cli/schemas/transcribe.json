@@ -1,6 +1,6 @@
 {
 	"command": "transcribe",
-	"description": "Transcribe audio/video from URL or local file using Whisper (local) or OpenAI API",
+	"description": "Transcribe audio/video from URL or local file using Whisper (local), OpenAI API, or TwelveLabs Pegasus",
 	"arguments": {
 		"input": {
 			"type": "string",
@@ -11,8 +11,8 @@
 	"flags": {
 		"--backend": {
 			"type": "string",
-			"enum": ["local", "openai"],
-			"description": "Transcription backend. 'local' uses whisper-cli, 'openai' uses OpenAI API (requires OPENAI_API_KEY)"
+			"enum": ["local", "openai", "pegasus"],
+			"description": "Transcription backend. 'local' uses whisper-cli, 'openai' uses OpenAI API (requires OPENAI_API_KEY), 'pegasus' uses TwelveLabs Pegasus video understanding on a media URL (requires TWELVELABS_API_KEY, URL input only)"
 		},
 		"--language": {
 			"type": "string",
@@ -21,7 +21,7 @@
 		},
 		"--model": {
 			"type": "string",
-			"description": "Override model. Local: tiny, base, small, medium, large, large-v3-turbo. OpenAI: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1"
+			"description": "Override model. Local: tiny, base, small, medium, large, large-v3-turbo. OpenAI: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1. Pegasus: pegasus1.5, pegasus1.2"
 		},
 		"--output": {
 			"type": "string",
@@ -61,9 +61,9 @@
 	"output": {
 		"success": "boolean",
 		"input": "string",
-		"backend": "string (local | openai)",
+		"backend": "string (local | openai | pegasus)",
 		"files": {
-			"wav": "string (path)",
+			"wav": "string (path; empty for pegasus)",
 			"srt": "string (path)",
 			"txt": "string (path)"
 		},
@@ -77,6 +77,7 @@
 		"trx transcribe recording.mp4 --output json",
 		"trx transcribe recording.mp4 --backend openai --output json",
 		"trx transcribe recording.mp4 -b openai -m gpt-4o-mini-transcribe --output json",
+		"trx transcribe https://example.com/talk.mp4 --backend pegasus --output json",
 		"trx transcribe https://youtube.com/watch?v=abc --language es --output json",
 		"trx transcribe video.mp4 --fields text --output json",
 		"trx transcribe video.mp4 --dry-run --output json"

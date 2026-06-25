@@ -2,9 +2,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-export type Backend = "local" | "openai";
+export type Backend = "local" | "openai" | "pegasus";
 
 export type OpenAIModel = "gpt-4o-transcribe" | "gpt-4o-mini-transcribe" | "whisper-1";
+
+export type PegasusModel = "pegasus1.5" | "pegasus1.2";
 
 export interface TrxConfig {
 	backend: Backend;
@@ -15,6 +17,9 @@ export interface TrxConfig {
 	wordTimestamps: boolean;
 	openai: {
 		model: OpenAIModel;
+	};
+	pegasus: {
+		model: PegasusModel;
 	};
 	whisperFlags: {
 		suppressNst: boolean;
@@ -59,6 +64,7 @@ export function readConfig(): TrxConfig | null {
 			...defaults,
 			...saved,
 			openai: { ...defaults.openai, ...(saved.openai || {}) },
+			pegasus: { ...defaults.pegasus, ...(saved.pegasus || {}) },
 			whisperFlags: { ...defaults.whisperFlags, ...(saved.whisperFlags || {}) },
 		};
 	} catch {
@@ -81,6 +87,9 @@ export function defaultConfig(modelSize: string, language: string, backend: Back
 		wordTimestamps: false,
 		openai: {
 			model: "gpt-4o-transcribe",
+		},
+		pegasus: {
+			model: "pegasus1.5",
 		},
 		whisperFlags: {
 			suppressNst: true,
