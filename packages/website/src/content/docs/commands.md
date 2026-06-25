@@ -18,7 +18,7 @@ The `transcribe` subcommand is optional — `trx <input>` works the same way.
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-b, --backend` | Transcription backend (`local` or `openai`) | from config |
+| `-b, --backend` | Transcription backend (`local`, `openai`, or `pegasus`) | from config |
 | `-l, --language` | ISO 639-1 language code | `auto` |
 | `-m, --model` | Override model size | from config |
 | `-w, --words` | Word-level timestamps in SRT | `false` |
@@ -51,6 +51,20 @@ The `transcribe` subcommand is optional — `trx <input>` works the same way.
 | `gpt-4o-mini-transcribe` | $0.60/hr | Fastest, cheapest |
 | `whisper-1` | $0.36/hr | Legacy, segment timestamps |
 
+**TwelveLabs Pegasus** (video understanding — URL input only):
+
+| Model | Notes |
+|-------|-------|
+| `pegasus1.5` | Recommended; larger context window |
+| `pegasus1.2` | Legacy |
+
+Pegasus reads the video directly from its URL server-side, so it skips the
+local download/clean steps and uses the full audiovisual context (on-screen
+text, speaker cues). Requires `TWELVELABS_API_KEY` and a direct media URL
+(not a YouTube/Drive share link). Output is a single-cue `.srt` plus `.txt`,
+since Pegasus returns prose rather than timed segments. Get a free key at
+[twelvelabs.io](https://twelvelabs.io) — there's a generous free tier.
+
 ### Examples
 
 ```bash
@@ -62,6 +76,9 @@ trx podcast.mp3 -l es -w
 
 # OpenAI API with specific model
 trx meeting.m4a -b openai -m gpt-4o-mini-transcribe
+
+# TwelveLabs Pegasus video understanding (URL input)
+trx "https://example.com/talk.mp4" -b pegasus
 
 # JSON output for piping
 trx video.mp4 --output json --fields text

@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 
 const CLI = resolve(import.meta.dir, "../bin/trx.ts");
@@ -194,13 +194,7 @@ describe("input validation", () => {
 	});
 
 	test("rejects path traversal in file path", async () => {
-		const { stdout, exitCode } = await run([
-			"transcribe",
-			"../../etc/passwd",
-			"--dry-run",
-			"--output",
-			"json",
-		]);
+		const { stdout, exitCode } = await run(["transcribe", "../../etc/passwd", "--dry-run", "--output", "json"]);
 		expect(exitCode).toBe(1);
 		const data = parseJSON(stdout) as Record<string, unknown>;
 		expect(data.success).toBe(false);
@@ -208,13 +202,7 @@ describe("input validation", () => {
 	});
 
 	test("rejects URL-encoded file paths", async () => {
-		const { stdout, exitCode } = await run([
-			"transcribe",
-			"/tmp/%2e%2e/etc/passwd",
-			"--dry-run",
-			"--output",
-			"json",
-		]);
+		const { stdout, exitCode } = await run(["transcribe", "/tmp/%2e%2e/etc/passwd", "--dry-run", "--output", "json"]);
 		expect(exitCode).toBe(1);
 		const data = parseJSON(stdout) as Record<string, unknown>;
 		expect(data.success).toBe(false);
@@ -442,16 +430,65 @@ describe("backend selection", () => {
 		const data = parseJSON(stdout) as Record<string, unknown>;
 		expect(data.error).toContain("Unknown OpenAI model");
 	});
-});
 
-describe("trx shorthand", () => {
-	test("trx <url> delegates to transcribe", async () => {
+	test("--backend pegasus shows TwelveLabs in dry-run plan with no local steps", async () => {
 		const { stdout, exitCode } = await run([
+			"transcribe",
 			"https://example.com/video.mp4",
+			"--backend",
+			"pegasus",
 			"--dry-run",
 			"--output",
 			"json",
 		]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.backend).toBe("pegasus");
+		const steps = data.steps as string[];
+		// Pegasus reads the URL server-side: no yt-dlp download or ffmpeg cleaning.
+		expect(steps).not.toContain("download via yt-dlp");
+		expect(steps).not.toContain("clean audio via ffmpeg");
+		expect(steps.some((s) => s.includes("TwelveLabs"))).toBe(true);
+	});
+
+	test("pegasus backend validates pegasus model names", async () => {
+		const { stdout, exitCode } = await run([
+			"transcribe",
+			"https://example.com/video.mp4",
+			"--backend",
+			"pegasus",
+			"--model",
+			"pegasus1.5",
+			"--dry-run",
+			"--output",
+			"json",
+		]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.model).toBe("pegasus1.5");
+	});
+
+	test("pegasus backend rejects non-pegasus model names", async () => {
+		const { stdout, exitCode } = await run([
+			"transcribe",
+			"https://example.com/video.mp4",
+			"--backend",
+			"pegasus",
+			"--model",
+			"whisper-1",
+			"--dry-run",
+			"--output",
+			"json",
+		]);
+		expect(exitCode).toBe(1);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.error).toContain("Unknown Pegasus model");
+	});
+});
+
+describe("trx shorthand", () => {
+	test("trx <url> delegates to transcribe", async () => {
+		const { stdout, exitCode } = await run(["https://example.com/video.mp4", "--dry-run", "--output", "json"]);
 		expect(exitCode).toBe(0);
 		const data = parseJSON(stdout) as Record<string, unknown>;
 		expect(data.dryRun).toBe(true);

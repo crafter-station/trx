@@ -19,6 +19,9 @@ trx stores configuration at `~/.trx/config.json`. Created automatically by `trx 
   "openai": {
     "model": "gpt-4o-transcribe"
   },
+  "pegasus": {
+    "model": "pegasus1.5"
+  },
   "whisperFlags": {
     "suppressNst": true,
     "noFallback": true,
@@ -33,13 +36,14 @@ trx stores configuration at `~/.trx/config.json`. Created automatically by `trx 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `backend` | `"local"` \| `"openai"` | Active transcription backend |
+| `backend` | `"local"` \| `"openai"` \| `"pegasus"` | Active transcription backend |
 | `modelPath` | string | Path to the local Whisper model file |
 | `modelSize` | string | Model size identifier |
 | `language` | string | Default language (`"auto"` for detection) |
 | `threads` | number | CPU threads for local transcription |
 | `wordTimestamps` | boolean | Enable word-level SRT by default |
 | `openai.model` | string | Default OpenAI model |
+| `pegasus.model` | string | Default TwelveLabs Pegasus model |
 | `whisperFlags` | object | Advanced whisper-cli flags |
 
 ## Environment variables
@@ -47,6 +51,7 @@ trx stores configuration at `~/.trx/config.json`. Created automatically by `trx 
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | For OpenAI backend | Your OpenAI API key |
+| `TWELVELABS_API_KEY` | For Pegasus backend | Your TwelveLabs API key (free tier at [twelvelabs.io](https://twelvelabs.io)) |
 
 ## Models directory
 

@@ -3,7 +3,8 @@ import type { Backend, TrxConfig } from "../utils/config.ts";
 import { cleanAudio } from "./audio.ts";
 import { downloadMedia } from "./download.ts";
 import { transcribeOpenAI } from "./openai.ts";
-import { type WhisperProgress, transcribe } from "./whisper.ts";
+import { transcribePegasus } from "./twelvelabs.ts";
+import { transcribe, type WhisperProgress } from "./whisper.ts";
 
 export interface PipelineOptions {
 	input: string;
@@ -38,6 +39,37 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 	const { config, outputDir } = opts;
 	const backend = opts.backend || config.backend || "local";
 	let inputFile: string;
+
+	// Pegasus analyses the video directly from its URL server-side — no local
+	// download or audio cleaning, so it short-circuits the whisper/openai pipeline.
+	if (backend === "pegasus") {
+		if (opts.inputType !== "url") {
+			throw new Error(
+				"Pegasus backend requires a direct media URL (it analyses video server-side). Use --backend local or openai for local files.",
+			);
+		}
+		const model = config.pegasus.model;
+		opts.onStep?.(`Transcribing with TwelveLabs ${model}...`);
+		const name = basename(opts.input.split(/[?#]/)[0]).replace(/\.[^.]+$/, "") || "pegasus";
+		const outBase = resolve(outputDir, name);
+		const result = await transcribePegasus(opts.input, model, outBase, opts.language);
+
+		return {
+			success: true,
+			input: opts.input,
+			backend: "pegasus",
+			files: {
+				wav: "",
+				srt: result.srtPath,
+				txt: result.txtPath,
+			},
+			metadata: {
+				language: opts.language || "auto",
+				model,
+			},
+			text: result.text,
+		};
+	}
 
 	if (opts.inputType === "url" && !opts.noDownload) {
 		opts.onStep?.("Downloading media...");
