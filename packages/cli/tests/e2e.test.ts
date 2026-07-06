@@ -84,6 +84,7 @@ describe("trx schema", () => {
 		expect(flags).toHaveProperty("--dry-run");
 		expect(flags).toHaveProperty("--fields");
 		expect(flags).toHaveProperty("--output");
+		expect(flags).toHaveProperty("--cookies-from-browser");
 	});
 
 	test("init schema returns valid JSON with deps info", async () => {
@@ -159,6 +160,23 @@ describe("trx transcribe --dry-run", () => {
 		const steps = data.steps as string[];
 		expect(steps).not.toContain("download via yt-dlp");
 		expect(steps).toContain("clean audio via ffmpeg");
+	});
+
+	test("--cookies-from-browser appears in dry-run download step", async () => {
+		const { stdout, exitCode } = await run([
+			"transcribe",
+			"https://www.instagram.com/reel/test123",
+			"--dry-run",
+			"--cookies-from-browser",
+			"chrome:Default",
+			"--output",
+			"json",
+		]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.cookiesFromBrowser).toBe("chrome:Default");
+		const steps = data.steps as string[];
+		expect(steps).toContain("download via yt-dlp with chrome:Default cookies");
 	});
 
 	test("--no-clean removes ffmpeg step", async () => {

@@ -40,7 +40,7 @@
 		},
 		"--json": {
 			"type": "string",
-			"description": "Raw JSON payload: {\"input\": \"...\", \"language\": \"...\", \"model\": \"...\", \"backend\": \"...\"}"
+			"description": "Raw JSON payload: {\"input\": \"...\", \"language\": \"...\", \"model\": \"...\", \"backend\": \"...\", \"cookiesFromBrowser\": \"chrome\"}"
 		},
 		"--output-dir": {
 			"type": "string",
@@ -56,6 +56,10 @@
 			"type": "boolean",
 			"default": false,
 			"description": "Skip ffmpeg audio cleaning/normalization"
+		},
+		"--cookies-from-browser": {
+			"type": "string",
+			"description": "Pass browser cookies to yt-dlp for Instagram/private URLs, e.g. chrome or chrome:Default"
 		}
 	},
 	"output": {
@@ -78,6 +82,7 @@
 		"trx transcribe recording.mp4 --backend openai --output json",
 		"trx transcribe recording.mp4 -b openai -m gpt-4o-mini-transcribe --output json",
 		"trx transcribe https://youtube.com/watch?v=abc --language es --output json",
+		"trx transcribe https://www.instagram.com/reel/... --cookies-from-browser chrome --output json",
 		"trx transcribe video.mp4 --fields text --output json",
 		"trx transcribe video.mp4 --dry-run --output json"
 	]

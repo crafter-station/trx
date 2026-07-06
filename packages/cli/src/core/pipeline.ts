@@ -14,6 +14,7 @@ export interface PipelineOptions {
 	backend?: Backend;
 	noDownload?: boolean;
 	noClean?: boolean;
+	cookiesFromBrowser?: string;
 	onStep?: (step: string) => void;
 	onProgress?: (progress: WhisperProgress) => void;
 }
@@ -41,7 +42,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 
 	if (opts.inputType === "url" && !opts.noDownload) {
 		opts.onStep?.("Downloading media...");
-		const downloaded = await downloadMedia(opts.input, outputDir);
+		const downloaded = await downloadMedia(opts.input, outputDir, { cookiesFromBrowser: opts.cookiesFromBrowser });
 		inputFile = downloaded.filePath;
 	} else {
 		inputFile = resolve(opts.input);

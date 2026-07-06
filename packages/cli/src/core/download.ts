@@ -6,14 +6,28 @@ export interface DownloadResult {
 	title: string;
 }
 
-export async function downloadMedia(url: string, outputDir: string): Promise<DownloadResult> {
+export interface DownloadOptions {
+	cookiesFromBrowser?: string;
+}
+
+export async function downloadMedia(url: string, outputDir: string, opts: DownloadOptions = {}): Promise<DownloadResult> {
 	const basename = `trx-${Date.now()}`;
 	const outputTemplate = `${outputDir}/${basename}.%(ext)s`;
 
-	const result = await spawn(["yt-dlp", "--no-playlist", "-o", outputTemplate, "--print", "after_move:filepath", url]);
+	const args = ["yt-dlp", "--no-playlist", "-o", outputTemplate, "--print", "after_move:filepath"];
+	if (opts.cookiesFromBrowser) {
+		args.push("--cookies-from-browser", opts.cookiesFromBrowser);
+	}
+	args.push(url);
+
+	const result = await spawn(args);
 
 	if (result.exitCode !== 0) {
-		throw new Error(`yt-dlp download failed: ${result.stderr}`);
+		const hint =
+			!opts.cookiesFromBrowser && /Instagram|empty media response|login|cookies/i.test(result.stderr)
+				? "\nHint: retry with --cookies-from-browser chrome for Instagram or private URLs."
+				: "";
+		throw new Error(`yt-dlp download failed: ${result.stderr}${hint}`);
 	}
 
 	const downloadedPath = result.stdout.split("\n").pop()?.trim();

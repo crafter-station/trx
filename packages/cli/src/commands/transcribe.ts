@@ -36,6 +36,7 @@ export function createTranscribeCommand(): Command {
 		.option("-b, --backend <backend>", "transcription backend (local, openai)")
 		.option("--no-download", "skip yt-dlp (input must be local)")
 		.option("--no-clean", "skip ffmpeg audio cleaning")
+		.option("--cookies-from-browser <browser>", "load yt-dlp cookies from browser")
 		.action(async (inputArg, opts, cmd) => {
 			const format: OutputFormat = cmd.optsWithGlobals().output;
 			const isTTY = process.stdout.isTTY && format !== "json";
@@ -51,6 +52,7 @@ export function createTranscribeCommand(): Command {
 				let language = opts.language;
 				let modelOverride = opts.model;
 				let backendOverride = opts.backend;
+				let cookiesFromBrowser = opts.cookiesFromBrowser;
 
 				if (opts.json) {
 					const payload = JSON.parse(opts.json);
@@ -58,6 +60,7 @@ export function createTranscribeCommand(): Command {
 					language = payload.language || language;
 					modelOverride = payload.model || modelOverride;
 					backendOverride = payload.backend || backendOverride;
+					cookiesFromBrowser = payload.cookiesFromBrowser || payload.cookies_from_browser || cookiesFromBrowser;
 				} else {
 					parsedInput = validateInput(inputArg);
 				}
@@ -79,12 +82,16 @@ export function createTranscribeCommand(): Command {
 						effectiveBackend === "openai"
 							? `transcribe via OpenAI ${modelOverride || config.openai.model}`
 							: "transcribe via whisper-cli";
+					const downloadStep = cookiesFromBrowser
+						? `download via yt-dlp with ${cookiesFromBrowser} cookies`
+						: "download via yt-dlp";
 					output(format, {
 						json: {
 							dryRun: true,
 							input: parsedInput.value,
 							inputType: parsedInput.type,
 							backend: effectiveBackend,
+							cookiesFromBrowser,
 							language: language || "auto",
 							model:
 								effectiveBackend === "openai"
@@ -92,7 +99,7 @@ export function createTranscribeCommand(): Command {
 									: modelOverride || config.modelSize,
 							outputDir,
 							steps: [
-								...(parsedInput.type === "url" && opts.download !== false ? ["download via yt-dlp"] : []),
+								...(parsedInput.type === "url" && opts.download !== false ? [downloadStep] : []),
 								...(opts.clean !== false ? ["clean audio via ffmpeg"] : []),
 								transcribeStep,
 								"generate .srt and .txt",
@@ -127,6 +134,7 @@ export function createTranscribeCommand(): Command {
 					backend: effectiveBackend,
 					noDownload: opts.download === false,
 					noClean: opts.clean === false,
+					cookiesFromBrowser,
 					onStep: (step) => {
 						if (spinner && !done) spinner.start(step);
 					},

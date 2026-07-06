@@ -38,6 +38,11 @@ For URLs (YouTube, Twitter, Instagram, etc.):
 trx transcribe "https://youtube.com/watch?v=..." --output json
 ```
 
+For Instagram or private URLs that need login:
+```bash
+trx transcribe "https://www.instagram.com/reel/..." --cookies-from-browser chrome --output json
+```
+
 For local files:
 ```bash
 trx transcribe ./recording.mp4 --output json
@@ -120,11 +125,13 @@ trx schema init
 | `--output-dir <dir>` | Output directory | `.` (cwd) |
 | `--no-download` | Skip yt-dlp (local files only) | false |
 | `--no-clean` | Skip ffmpeg audio cleaning | false |
+| `--cookies-from-browser <browser>` | Pass browser cookies to yt-dlp for Instagram/private URLs | - |
 | `--json <payload>` | Raw JSON input | - |
 
 ## Edge cases
 
 - **yt-dlp extension mismatch**: yt-dlp sometimes outputs `.mp4.webm` instead of `.mp4`. The CLI handles this by scanning for the downloaded file by prefix.
+- **Instagram empty media response**: Retry with `--cookies-from-browser chrome` or `--cookies-from-browser chrome:Default`. If it still fails, update yt-dlp and confirm the reel opens in that browser profile.
 - **Large files (>1hr)**: Whisper processes in segments. Works but is slow on CPU. Consider `--model tiny` for speed.
 - **No GPU**: whisper-cli uses CPU by default. Acceptable for tiny/base/small models.
 - **Auto-detect language**: When `--language auto`, Whisper detects the language from the first 30 seconds. For multilingual content, specify the primary language.
