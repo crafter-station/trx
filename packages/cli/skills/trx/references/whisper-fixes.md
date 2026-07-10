@@ -6,21 +6,21 @@ Reference for post-processing agent corrections. Grouped by language and categor
 
 ### Accent marks (most common)
 Whisper frequently drops diacritics. Restore based on grammatical context:
-- "como" -> "cmo" (when meaning "how/what")
-- "esta" -> "est" (when it's a verb, not demonstrative)
-- "mas" -> "ms" (when meaning "more", not "but")
-- "si" -> "s" (when meaning "yes", not "if")
-- "el" -> "l" (when it's a pronoun, not article)
-- "que" -> "qu" (in questions: "Qu haces?")
-- "cuando" -> "cundo" (in questions)
-- "numero" -> "nmero"
-- "tambien" -> "tambin"
-- "informacion" -> "informacin"
+- "como" -> "cómo" (when meaning "how/what")
+- "esta" -> "está" (when it's a verb, not demonstrative)
+- "mas" -> "más" (when meaning "more", not "but")
+- "si" -> "sí" (when meaning "yes", not "if")
+- "el" -> "él" (when it's a pronoun, not article)
+- "que" -> "qué" (in questions: "¿Qué haces?")
+- "cuando" -> "cuándo" (in questions)
+- "numero" -> "número"
+- "tambien" -> "también"
+- "informacion" -> "información"
 
 ### Question/exclamation marks
 Whisper almost never generates opening marks:
-- Add "" at the start of questions
-- Add "" at the start of exclamations
+- Add "¿" at the start of questions
+- Add "¡" at the start of exclamations
 
 ### Run-on sentences
 Whisper often produces long sentences without periods. Split when:
@@ -29,7 +29,7 @@ Whisper often produces long sentences without periods. Split when:
 - Natural pause in the audio (check SRT timestamps for gaps > 1.5s)
 
 ### Common confusions
-- "coma" vs "como" (comma vs how)
+- "coma" vs "cómo" (comma vs how)
 - "haber" vs "a ver" (to have vs let's see)
 - "echo" vs "hecho" (thrown vs done/fact)
 - "hay" vs "ah" vs "ay" (there is vs interjection)

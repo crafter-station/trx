@@ -8,7 +8,7 @@ description: |
   transcription, (5) user asks to extract text from a video.
 metadata:
   author: Railly Hugo
-  version: "0.4.0"
+  version: "0.4.2"
 ---
 
 # trx -- Agent-First Transcription CLI
@@ -19,7 +19,18 @@ Install: `npx skills add crafter-station/trx -g`
 
 Check setup: `trx doctor --output json`. If dependencies missing, run `trx init`.
 
-Install: `bun add -g @crafter/trx`
+Install (Bun recommended, works with npm):
+
+```bash
+bun add -g @crafter/trx
+# or
+npm i -g @crafter/trx
+
+trx init
+trx doctor --output json
+```
+
+`trx init` installs deps (`whisper-cli`, `yt-dlp`, `ffmpeg`), downloads a Whisper model, and installs the agent skill.
 
 ## Workflow
 
@@ -34,23 +45,33 @@ Validates input, checks dependencies, shows execution plan without running.
 ### 2. Transcribe
 
 For URLs (YouTube, Twitter, Instagram, etc.):
+
 ```bash
 trx transcribe "https://youtube.com/watch?v=..." --output json
 ```
 
 For Instagram or private URLs that need login:
+
 ```bash
 trx transcribe "https://www.instagram.com/reel/..." --cookies-from-browser chrome --output json
 ```
 
 For local files:
+
 ```bash
 trx transcribe ./recording.mp4 --output json
 ```
 
 Agent-optimized (text only, saves tokens):
+
 ```bash
 trx transcribe <input> --fields text --output json
+```
+
+Raw JSON payload (preferred for agents, avoids shell quoting issues):
+
+```bash
+trx transcribe video.mp4 --json '{"input":"video.mp4","language":"es","backend":"local"}' --output json
 ```
 
 ### Backends (v0.4.0+)
@@ -62,6 +83,7 @@ trx supports two backends: local Whisper (default) and OpenAI API.
 trx transcribe <input> --backend local
 
 # OpenAI API (faster, SOTA accuracy, requires OPENAI_API_KEY)
+export OPENAI_API_KEY=sk-...
 trx transcribe <input> --backend openai
 ```
 
@@ -80,7 +102,7 @@ After transcription, read the `.txt` output and apply corrections. Read [whisper
 
 **Correction checklist:**
 1. **Punctuation**: Whisper drops periods at paragraph boundaries and misplaces commas. Fix sentence boundaries.
-2. **Accents** (Spanish): Whisper often drops diacritics. Restore: como -> como/cmo, esta -> esta/est, mas -> mas/ms.
+2. **Accents** (Spanish): Whisper often drops diacritics. Restore: `como` -> `cómo` (how), `esta` -> `está` (is), `mas` -> `más` (more), `si` -> `sí` (yes), `el` -> `él` (he/him), `que` -> `qué` (what), `cuando` -> `cuándo` (when), `numero` -> `número`, `tambien` -> `también`, `informacion` -> `información`.
 3. **Technical terms**: Whisper misspells domain-specific words. Ask user for a glossary or infer from context.
 4. **Repeated phrases**: Whisper sometimes stutters on word boundaries. Remove exact consecutive duplicates.
 5. **Speaker attribution**: If user provides speaker names, insert `[Speaker Name]:` markers.
@@ -112,26 +134,67 @@ trx schema init
 - `--output json`: Machine-readable (default when piped)
 - `--output table`: Human-readable with progress (default when TTY)
 - `--fields text`: Only return transcript text (saves tokens)
-- `--fields metadata`: Only return metadata (language, model)
+- `--fields srt,metadata,files`: Select specific fields
 - `--dry-run`: Validate without executing
+
+Example JSON response (filtered with `--fields text`):
+
+```json
+{
+  "success": true,
+  "input": "recording.mp4",
+  "backend": "local",
+  "text": "Hola, cómo estás. Este es un ejemplo de transcripción...",
+  "files": {
+    "wav": "./recording.wav",
+    "srt": "./recording.srt",
+    "txt": "./recording.txt"
+  },
+  "metadata": {
+    "language": "es",
+    "model": "small"
+  }
+}
+```
+
+Full response includes `text`, `files`, `metadata`, `input`, `backend`.
 
 ## Flags reference
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `--backend <name>` | `local` or `openai` | from config |
-| `--language <code>` | ISO 639-1 language code | `auto` (from config) |
-| `--model <size>` | Override model: tiny, base, small, medium, large-v3-turbo, large, gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1 | from config |
+| `-b, --backend <name>` | `local` or `openai` | from config (`local`) |
+| `-l, --language <code>` | ISO 639-1 language code | `auto` (from config) |
+| `-m, --model <size>` | Override model: tiny, base, small, medium, large-v3-turbo, large, gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1 | from config |
+| `-w, --words` | Word-level timestamps in SRT | false |
 | `--output-dir <dir>` | Output directory | `.` (cwd) |
-| `--no-download` | Skip yt-dlp (local files only) | false |
+| `--output <format>` | `json`, `table`, or `auto` | auto (TTY=table, piped=json) |
+| `--fields <list>` | Limit output: text,srt,metadata,files (comma-separated) | all |
+| `--no-download` | Skip yt-dlp (input must be local) | false |
 | `--no-clean` | Skip ffmpeg audio cleaning | false |
-| `--cookies-from-browser <browser>` | Pass browser cookies to yt-dlp for Instagram/private URLs | - |
-| `--json <payload>` | Raw JSON input | - |
+| `--cookies-from-browser <browser>` | Load yt-dlp cookies from browser (e.g. chrome, chrome:Default) | - |
+| `--json <payload>` | Raw JSON input for agents: {"input","language","model","backend","cookiesFromBrowser"} | - |
+| `--dry-run` | Validate input and show plan without executing | false |
 
-## Edge cases
+Config stored at `~/.trx/config.json` after `trx init`:
+
+```json
+{
+  "modelPath": "~/.trx/models/ggml-small.bin",
+  "modelSize": "small",
+  "language": "auto",
+  "backend": "local",
+  "threads": 8,
+  "openai": { "model": "gpt-4o-transcribe" }
+}
+```
+
+## Edge cases & troubleshooting
 
 - **yt-dlp extension mismatch**: yt-dlp sometimes outputs `.mp4.webm` instead of `.mp4`. The CLI handles this by scanning for the downloaded file by prefix.
-- **Instagram empty media response**: Retry with `--cookies-from-browser chrome` or `--cookies-from-browser chrome:Default`. If it still fails, update yt-dlp and confirm the reel opens in that browser profile.
-- **Large files (>1hr)**: Whisper processes in segments. Works but is slow on CPU. Consider `--model tiny` for speed.
-- **No GPU**: whisper-cli uses CPU by default. Acceptable for tiny/base/small models.
-- **Auto-detect language**: When `--language auto`, Whisper detects the language from the first 30 seconds. For multilingual content, specify the primary language.
+- **Instagram empty media response**: Retry with `--cookies-from-browser chrome` or `--cookies-from-browser chrome:Default`. If it still fails, update yt-dlp (`brew upgrade yt-dlp`) and confirm the reel opens in that browser profile.
+- **Large files (>1hr)**: Whisper processes in segments. Works but is slow on CPU. Consider `--model tiny` for speed or switch to `--backend openai`.
+- **No GPU**: `whisper-cli` uses CPU by default. Acceptable for tiny/base/small. For medium/large use `large-v3-turbo` or OpenAI backend.
+- **Auto-detect language**: When `--language auto`, Whisper detects language from first 30 seconds. For multilingual content, specify primary language via `--language es`.
+- **OpenAI backend fails**: Ensure `OPENAI_API_KEY` is set. Run `trx doctor --output json` to verify. For agents: `echo $OPENAI_API_KEY` should be non-empty, else error is expected.
+- **npm vs bun**: Package requires `bun >=1.0.0` runtime (engines field). `npm i -g @crafter/trx` works if `bun` is installed globally (`curl -fsSL https://bun.sh/install | bash`). `bun add -g` is recommended.
