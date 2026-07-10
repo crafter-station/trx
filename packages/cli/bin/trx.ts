@@ -7,10 +7,12 @@ import { createTranscribeCommand } from "../src/commands/transcribe.ts";
 
 const program = new Command();
 
+import pkg from "../package.json" with { type: "json" };
+
 program
 	.name("trx")
 	.description("Agent-first CLI for audio/video transcription via Whisper")
-	.version("0.4.1")
+	.version(pkg.version)
 	.option("-o, --output <format>", "output format (json, table, auto)", "auto")
 	.hook("preAction", (thisCommand) => {
 		const opts = thisCommand.opts();
