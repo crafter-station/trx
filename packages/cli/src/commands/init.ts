@@ -67,7 +67,40 @@ async function installViaBrew(name: string, brewPkg: string, isTTY: boolean): Pr
 		if (isTTY) p.log.success(`${name} installed`);
 		return true;
 	} catch (e) {
-		if (isTTY) p.log.error(`Failed: ${(e as Error).message}`);
+		const raw = (e as Error).message;
+		if (await isInstalled(name)) {
+			if (isTTY) p.log.success(`${name} installed (verified despite brew lock)`);
+			return true;
+		}
+
+		const isLockError = raw.includes("already locked") || raw.includes("Another `brew");
+		if (isLockError) {
+			if (isTTY) p.log.warn(`brew lock detected for ${name} — bottle was likely installed, verifying...`);
+
+			try {
+				await spawn(["sh", "-c", "rm -f ~/Library/Caches/Homebrew/downloads/*.incomplete 2>/dev/null; echo ok"]);
+			} catch {}
+
+			if (await isInstalled(name)) {
+				if (isTTY) p.log.success(`${name} installed`);
+				return true;
+			}
+
+			if (isTTY) p.log.step(`Retrying brew install ${brewPkg} after lock cleanup...`);
+			try {
+				await spawnOrThrow(["brew", "install", brewPkg], `brew install ${brewPkg} (retry)`);
+				if (isTTY) p.log.success(`${name} installed`);
+				return true;
+			} catch (retryErr) {
+				if (await isInstalled(name)) {
+					if (isTTY) p.log.success(`${name} installed (verified on retry)`);
+					return true;
+				}
+				if (isTTY) p.log.error(`Retry failed: ${(retryErr as Error).message}`);
+			}
+		}
+
+		if (isTTY) p.log.error(`Failed: ${raw}`);
 		return false;
 	}
 }
@@ -387,10 +420,8 @@ export function createInitCommand(): Command {
 					}
 
 					if (isTTY) p.log.step("Checking ffmpeg + yt-dlp (still needed for download/clean)...");
-					const [hasYtdlp, hasFfmpeg] = await Promise.all([
-						installDep("yt-dlp", isTTY),
-						installDep("ffmpeg", isTTY),
-					]);
+					const hasFfmpeg = await installDep("ffmpeg", isTTY);
+					const hasYtdlp = await installDep("yt-dlp", isTTY);
 					if (!hasYtdlp || !hasFfmpeg) {
 						const missing = [!hasYtdlp && "yt-dlp", !hasFfmpeg && "ffmpeg"].filter(Boolean).join(", ");
 						outputError(`Missing dependencies: ${missing}`, format);
@@ -425,11 +456,10 @@ export function createInitCommand(): Command {
 
 				if (isTTY) p.log.step("Checking dependencies...");
 
-				const [hasWhisper, hasYtdlp, hasFfmpeg] = await Promise.all([
-					installDep("whisper-cli", isTTY),
-					installDep("yt-dlp", isTTY),
-					installDep("ffmpeg", isTTY),
-				]);
+				// install sequentially on macOS to avoid brew lock contention
+				const hasWhisper = await installDep("whisper-cli", isTTY);
+				const hasFfmpeg = await installDep("ffmpeg", isTTY);
+				const hasYtdlp = await installDep("yt-dlp", isTTY);
 
 				if (!hasWhisper || !hasYtdlp || !hasFfmpeg) {
 					const missing = [!hasWhisper && "whisper-cli", !hasYtdlp && "yt-dlp", !hasFfmpeg && "ffmpeg"]

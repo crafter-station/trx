@@ -11,9 +11,37 @@ export async function spawn(cmd: string[], opts?: { cwd?: string; timeout?: numb
 		stderr: "pipe",
 	});
 
-	const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+	let stdout = "";
+	let stderr = "";
+	let exitCode: number;
+	let killedByTimeout = false;
 
-	const exitCode = await proc.exited;
+	try {
+		const pending = Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
+
+		if (opts?.timeout) {
+			const timeoutPromise = new Promise<never>((_, reject) => {
+				setTimeout(
+					() => {
+						killedByTimeout = true;
+						try {
+							proc.kill();
+						} catch {}
+						reject(new Error(`command timed out after ${opts.timeout}ms: ${cmd.join(" ")}`));
+					},
+					opts.timeout,
+				);
+			});
+			[stdout, stderr] = (await Promise.race([pending, timeoutPromise])) as [string, string];
+		} else {
+			[stdout, stderr] = await pending;
+		}
+
+		exitCode = await proc.exited;
+	} catch (e) {
+		if (killedByTimeout) throw e as Error;
+		throw e;
+	}
 
 	return { exitCode, stdout: stdout.trim(), stderr: stderr.trim() };
 }
