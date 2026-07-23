@@ -75,6 +75,10 @@ export async function transcribeVercel(
 		headers: {
 			Authorization: `Bearer ${apiKey}`,
 			"ai-model-id": model,
+			// protocol headers required by the gateway, matching @ai-sdk/gateway
+			"ai-gateway-protocol-version": "0.0.1",
+			"ai-transcription-model-specification-version": "4",
+			"ai-gateway-auth-method": "api-key",
 			"Content-Type": "application/json",
 		},
 		body: JSON.stringify({
