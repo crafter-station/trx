@@ -49,3 +49,13 @@ export OPENAI_API_KEY="sk-..."
 trx init --backend openai
 trx recording.mp4 -b openai
 ```
+
+## Vercel AI Gateway (optional)
+
+One API key for any provider's transcription model, addressed as `creator/model-name`:
+
+```bash
+export AI_GATEWAY_API_KEY="..."
+trx init --backend vercel
+trx recording.mp4 -b vercel -m openai/whisper-1
+```

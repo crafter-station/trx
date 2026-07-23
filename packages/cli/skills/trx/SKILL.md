@@ -8,7 +8,7 @@ description: |
   transcription, (5) user asks to extract text from a video.
 metadata:
   author: Railly Hugo
-  version: "0.4.4"
+  version: "0.5.0"
 ---
 
 # trx -- Agent-First Transcription CLI
@@ -76,7 +76,7 @@ trx transcribe video.mp4 --json '{"input":"video.mp4","language":"es","backend":
 
 ### Backends (v0.4.0+)
 
-trx supports two backends: local Whisper (default) and OpenAI API.
+trx supports three backends: local Whisper (default), OpenAI API, and Vercel AI Gateway.
 
 ```bash
 # Local Whisper (default, offline, free)
@@ -85,6 +85,9 @@ trx transcribe <input> --backend local
 # OpenAI API (faster, SOTA accuracy, requires OPENAI_API_KEY)
 export OPENAI_API_KEY=sk-...
 trx transcribe <input> --backend openai
+
+# Vercel AI Gateway (any provider's transcription model, requires AI_GATEWAY_API_KEY)
+trx transcribe <input> --backend vercel -m openai/whisper-1
 ```
 
 OpenAI models:
@@ -92,9 +95,11 @@ OpenAI models:
 - `gpt-4o-mini-transcribe` — cheapest
 - `whisper-1` — legacy, supports per-segment SRT timestamps
 
+Vercel gateway models: any transcription model on the gateway, addressed as `creator/model-name` (default `openai/whisper-1`). One `AI_GATEWAY_API_KEY` covers all providers. This is Vercel's AI Gateway, not Cloudflare's product of the same name.
+
 Local models: `tiny`, `base`, `small`, `medium`, `large-v3-turbo`, `large`.
 
-Set backend persistently via `trx init --backend openai` or in config.
+Set backend persistently via `trx init --backend openai`, `trx init --backend vercel`, or in config.
 
 ### 3. Post-process (fix whisper mistakes)
 
@@ -163,9 +168,9 @@ Full response includes `text`, `files`, `metadata`, `input`, `backend`.
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-b, --backend <name>` | `local` or `openai` | from config (`local`) |
+| `-b, --backend <name>` | `local`, `openai`, or `vercel` | from config (`local`) |
 | `-l, --language <code>` | ISO 639-1 language code | `auto` (from config) |
-| `-m, --model <size>` | Override model: tiny, base, small, medium, large-v3-turbo, large, gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1 | from config |
+| `-m, --model <size>` | Override model: tiny, base, small, medium, large-v3-turbo, large, gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1, or creator/model-name for vercel | from config |
 | `-w, --words` | Word-level timestamps in SRT | false |
 | `--output-dir <dir>` | Output directory | `.` (cwd) |
 | `--output <format>` | `json`, `table`, or `auto` | auto (TTY=table, piped=json) |
@@ -185,7 +190,8 @@ Config stored at `~/.trx/config.json` after `trx init`:
   "language": "auto",
   "backend": "local",
   "threads": 8,
-  "openai": { "model": "gpt-4o-transcribe" }
+  "openai": { "model": "gpt-4o-transcribe" },
+  "vercel": { "model": "openai/whisper-1" }
 }
 ```
 

@@ -18,7 +18,7 @@ The `transcribe` subcommand is optional — `trx <input>` works the same way.
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-b, --backend` | Transcription backend (`local` or `openai`) | from config |
+| `-b, --backend` | Transcription backend (`local`, `openai`, or `vercel`) | from config |
 | `-l, --language` | ISO 639-1 language code | `auto` |
 | `-m, --model` | Override model size | from config |
 | `-w, --words` | Word-level timestamps in SRT | `false` |
@@ -51,6 +51,10 @@ The `transcribe` subcommand is optional — `trx <input>` works the same way.
 | `gpt-4o-mini-transcribe` | $0.60/hr | Fastest, cheapest |
 | `whisper-1` | $0.36/hr | Legacy, segment timestamps |
 
+**Vercel AI Gateway:**
+
+Any transcription model on the [gateway](https://vercel.com/docs/ai-gateway/modalities/speech-to-text), addressed as `creator/model-name` (default `openai/whisper-1`). One `AI_GATEWAY_API_KEY` covers all providers. This is Vercel's AI Gateway, not Cloudflare's product of the same name.
+
 ### Examples
 
 ```bash
@@ -62,6 +66,9 @@ trx podcast.mp3 -l es -w
 
 # OpenAI API with specific model
 trx meeting.m4a -b openai -m gpt-4o-mini-transcribe
+
+# Vercel AI Gateway with any provider's model
+trx meeting.m4a -b vercel -m openai/whisper-1
 
 # JSON output for piping
 trx video.mp4 --output json --fields text
@@ -84,7 +91,7 @@ trx init [flags]
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-b, --backend` | Backend: `local` or `openai` | `local` |
+| `-b, --backend` | Backend: `local`, `openai`, or `vercel` | `local` |
 | `-m, --model` | Model to download/configure | `small` |
 | `-l, --language` | Default language | `auto` |
 
@@ -99,6 +106,11 @@ trx init [flags]
 1. Validates `OPENAI_API_KEY` is set
 2. Installs `yt-dlp` and `ffmpeg` (still needed for download/clean)
 3. Saves config with selected OpenAI model
+
+**Vercel backend:**
+1. Validates `AI_GATEWAY_API_KEY` is set
+2. Installs `yt-dlp` and `ffmpeg` (still needed for download/clean)
+3. Saves config with the selected gateway model (`creator/model-name`)
 
 ---
 

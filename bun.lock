@@ -7,7 +7,7 @@
     },
     "packages/cli": {
       "name": "@crafter/trx",
-      "version": "0.4.4",
+      "version": "0.5.0",
       "bin": {
         "trx": "bin/trx.ts",
       },
@@ -734,6 +734,8 @@
     "zod-to-ts": ["zod-to-ts@1.2.0", "", { "peerDependencies": { "typescript": "^4.9.4 || ^5.0.2", "zod": "^3" } }, "sha512-x30XE43V+InwGpvTySRNz9kB7qFU8DlyEy7BsSTCHPH1R0QasMmHWZDCzYm6bVXtj/9NNJAZF3jW8rzFvH5OFA=="],
 
     "zwitch": ["zwitch@2.0.4", "", {}, "sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A=="],
+
+    "@crafter/trx/@crafter/trx": ["@crafter/trx@0.4.4", "", { "dependencies": { "@clack/prompts": "^1.1.0", "@crafter/trx": "^0.4.1", "commander": "^14.0.3" }, "bin": { "trx": "bin/trx.ts" } }, "sha512-cU9QlE644KNMFM87LFlgH2NXzlKu1HQ11UCG+RUHT9COs+/lV5u+6UGNXTwiLtGUpFHZ3s5ypLEtJ+GAzfFryg=="],
 
     "@rollup/pluginutils/estree-walker": ["estree-walker@2.0.2", "", {}, "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w=="],
 

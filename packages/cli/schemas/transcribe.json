@@ -1,6 +1,6 @@
 {
 	"command": "transcribe",
-	"description": "Transcribe audio/video from URL or local file using Whisper (local) or OpenAI API",
+	"description": "Transcribe audio/video from URL or local file using Whisper (local), OpenAI API, or Vercel AI Gateway",
 	"arguments": {
 		"input": {
 			"type": "string",
@@ -11,8 +11,12 @@
 	"flags": {
 		"--backend": {
 			"type": "string",
-			"enum": ["local", "openai"],
-			"description": "Transcription backend. 'local' uses whisper-cli, 'openai' uses OpenAI API (requires OPENAI_API_KEY)"
+			"enum": [
+				"local",
+				"openai",
+				"vercel"
+			],
+			"description": "Transcription backend. 'local' uses whisper-cli, 'openai' uses OpenAI API (requires OPENAI_API_KEY), 'vercel' uses Vercel AI Gateway (requires AI_GATEWAY_API_KEY)"
 		},
 		"--language": {
 			"type": "string",
@@ -21,11 +25,15 @@
 		},
 		"--model": {
 			"type": "string",
-			"description": "Override model. Local: tiny, base, small, medium, large, large-v3-turbo. OpenAI: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1"
+			"description": "Override model. Local: tiny, base, small, medium, large, large-v3-turbo. OpenAI: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1. Vercel: creator/model-name, e.g. openai/whisper-1"
 		},
 		"--output": {
 			"type": "string",
-			"enum": ["json", "table", "auto"],
+			"enum": [
+				"json",
+				"table",
+				"auto"
+			],
 			"default": "auto",
 			"description": "Output format. 'auto' uses 'table' for TTY, 'json' when piped"
 		},
@@ -65,7 +73,7 @@
 	"output": {
 		"success": "boolean",
 		"input": "string",
-		"backend": "string (local | openai)",
+		"backend": "string (local | openai | vercel)",
 		"files": {
 			"wav": "string (path)",
 			"srt": "string (path)",
@@ -80,6 +88,7 @@
 	"examples": [
 		"trx transcribe recording.mp4 --output json",
 		"trx transcribe recording.mp4 --backend openai --output json",
+		"trx transcribe recording.mp4 -b vercel -m openai/whisper-1 --output json",
 		"trx transcribe recording.mp4 -b openai -m gpt-4o-mini-transcribe --output json",
 		"trx transcribe https://youtube.com/watch?v=abc --language es --output json",
 		"trx transcribe https://www.instagram.com/reel/... --cookies-from-browser chrome --output json",

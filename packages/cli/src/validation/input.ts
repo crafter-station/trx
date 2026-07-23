@@ -191,10 +191,18 @@ export function validateOpenAIModel(model: string): OpenAITranscribeModel {
 	return cleaned as OpenAITranscribeModel;
 }
 
-export function validateBackend(backend: string): "local" | "openai" {
+export function validateBackend(backend: string): "local" | "openai" | "vercel" {
 	const cleaned = backend.trim().toLowerCase();
-	if (cleaned !== "local" && cleaned !== "openai") {
-		throw new Error(`Unknown backend: "${backend}". Available: local, openai`);
+	if (cleaned !== "local" && cleaned !== "openai" && cleaned !== "vercel") {
+		throw new Error(`Unknown backend: "${backend}". Available: local, openai, vercel`);
+	}
+	return cleaned;
+}
+
+export function validateVercelModel(model: string): string {
+	const cleaned = rejectControlChars(model.trim());
+	if (!/^[\w.-]+\/[\w.-]+$/.test(cleaned)) {
+		throw new Error(`Invalid gateway model: "${model}". Use creator/model-name format, for example openai/whisper-1.`);
 	}
 	return cleaned;
 }

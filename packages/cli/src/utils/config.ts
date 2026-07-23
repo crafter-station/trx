@@ -2,7 +2,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-export type Backend = "local" | "openai";
+export type Backend = "local" | "openai" | "vercel";
 
 export type OpenAIModel = "gpt-4o-transcribe" | "gpt-4o-mini-transcribe" | "whisper-1";
 
@@ -15,6 +15,9 @@ export interface TrxConfig {
 	wordTimestamps: boolean;
 	openai: {
 		model: OpenAIModel;
+	};
+	vercel: {
+		model: string;
 	};
 	whisperFlags: {
 		suppressNst: boolean;
@@ -59,6 +62,7 @@ export function readConfig(): TrxConfig | null {
 			...defaults,
 			...saved,
 			openai: { ...defaults.openai, ...(saved.openai || {}) },
+			vercel: { ...defaults.vercel, ...(saved.vercel || {}) },
 			whisperFlags: { ...defaults.whisperFlags, ...(saved.whisperFlags || {}) },
 		};
 	} catch {
@@ -81,6 +85,9 @@ export function defaultConfig(modelSize: string, language: string, backend: Back
 		wordTimestamps: false,
 		openai: {
 			model: "gpt-4o-transcribe",
+		},
+		vercel: {
+			model: "openai/whisper-1",
 		},
 		whisperFlags: {
 			suppressNst: true,

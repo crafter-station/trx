@@ -3,7 +3,8 @@ import type { Backend, TrxConfig } from "../utils/config.ts";
 import { cleanAudio } from "./audio.ts";
 import { downloadMedia } from "./download.ts";
 import { transcribeOpenAI } from "./openai.ts";
-import { type WhisperProgress, transcribe } from "./whisper.ts";
+import { transcribeVercel } from "./vercel.ts";
+import { transcribe, type WhisperProgress } from "./whisper.ts";
 
 export interface PipelineOptions {
 	input: string;
@@ -60,6 +61,28 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 	}
 
 	const audioInput = opts.noClean ? inputFile : wavPath;
+
+	if (backend === "vercel") {
+		const model = config.vercel.model;
+		opts.onStep?.(`Transcribing with Vercel AI Gateway (${model})...`);
+		const result = await transcribeVercel(audioInput, model, opts.language);
+
+		return {
+			success: true,
+			input: opts.input,
+			backend: "vercel",
+			files: {
+				wav: wavPath,
+				srt: result.srtPath,
+				txt: result.txtPath,
+			},
+			metadata: {
+				language: opts.language || "auto",
+				model,
+			},
+			text: result.text,
+		};
+	}
 
 	if (backend === "openai") {
 		const model = config.openai.model;
