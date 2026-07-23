@@ -1,0 +1,35 @@
+{
+	"command": "models",
+	"description": "List available transcription models for local, OpenAI, and Vercel AI Gateway backends",
+	"flags": {
+		"--backend": {
+			"type": "string",
+			"enum": [
+				"local",
+				"openai",
+				"vercel"
+			],
+			"description": "Filter models to one backend"
+		},
+		"--output": {
+			"type": "string",
+			"enum": [
+				"json",
+				"table",
+				"auto"
+			],
+			"default": "auto",
+			"description": "Output format. 'auto' uses 'table' for TTY and 'json' when piped"
+		}
+	},
+	"output": {
+		"local": "string[]",
+		"openai": "string[]",
+		"vercel": "string[] or { error: string }"
+	},
+	"examples": [
+		"trx models",
+		"trx models --backend local --output json",
+		"trx models --backend vercel --output json"
+	]
+}

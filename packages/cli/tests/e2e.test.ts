@@ -3,11 +3,14 @@ import { resolve } from "node:path";
 
 const CLI = resolve(import.meta.dir, "../bin/trx.ts");
 
-async function run(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+async function run(
+	args: string[],
+	env: Record<string, string | undefined> = { ...process.env, FORCE_COLOR: "0" },
+): Promise<{ stdout: string; stderr: string; exitCode: number }> {
 	const proc = Bun.spawn(["bun", "run", CLI, ...args], {
 		stdout: "pipe",
 		stderr: "pipe",
-		env: { ...process.env, FORCE_COLOR: "0" },
+		env,
 	});
 	const [stdout, stderr] = await Promise.all([new Response(proc.stdout).text(), new Response(proc.stderr).text()]);
 	const exitCode = await proc.exited;
@@ -25,6 +28,7 @@ describe("trx --help", () => {
 		expect(stdout).toContain("Agent-first CLI");
 		expect(stdout).toContain("transcribe");
 		expect(stdout).toContain("doctor");
+		expect(stdout).toContain("models");
 		expect(stdout).toContain("schema");
 		expect(stdout).toContain("init");
 	});
@@ -101,10 +105,47 @@ describe("trx schema", () => {
 		expect(deps).toHaveProperty("ffmpeg");
 	});
 
+	test("models schema returns valid JSON with command info", async () => {
+		const { stdout, exitCode } = await run(["schema", "models"]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.command).toBe("models");
+	});
+
 	test("unknown schema exits with error", async () => {
 		const { stderr, exitCode } = await run(["schema", "nonexistent"]);
 		expect(exitCode).toBe(1);
 		expect(stderr).toContain("Unknown schema");
+	});
+});
+
+describe("trx models", () => {
+	test("returns local models as JSON", async () => {
+		const { stdout, exitCode } = await run(["models", "--backend", "local", "--output", "json"]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.local).toEqual([
+			"tiny",
+			"tiny.en",
+			"base",
+			"base.en",
+			"small",
+			"small.en",
+			"medium",
+			"medium.en",
+			"large",
+			"large-v3-turbo",
+		]);
+	});
+
+	test("errors when Vercel API key is missing", async () => {
+		const env = { ...process.env, FORCE_COLOR: "0" };
+		delete env.AI_GATEWAY_API_KEY;
+
+		const { stdout, exitCode } = await run(["models", "--backend", "vercel", "--output", "json"], env);
+		expect(exitCode).toBe(1);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.error).toContain("AI_GATEWAY_API_KEY");
 	});
 });
 

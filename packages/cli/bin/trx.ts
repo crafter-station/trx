@@ -2,6 +2,7 @@
 import { Command } from "commander";
 import { createDoctorCommand } from "../src/commands/doctor.ts";
 import { createInitCommand } from "../src/commands/init.ts";
+import { createModelsCommand } from "../src/commands/models.ts";
 import { createSchemaCommand } from "../src/commands/schema.ts";
 import { createTranscribeCommand } from "../src/commands/transcribe.ts";
 
@@ -24,10 +25,11 @@ program
 program.addCommand(createInitCommand());
 program.addCommand(createTranscribeCommand());
 program.addCommand(createDoctorCommand());
+program.addCommand(createModelsCommand());
 program.addCommand(createSchemaCommand());
 
 const args = process.argv.slice(2);
-const subcommands = ["init", "transcribe", "doctor", "schema", "help", "--help", "-h", "--version", "-V"];
+const subcommands = ["init", "transcribe", "doctor", "models", "schema", "help", "--help", "-h", "--version", "-V"];
 const firstArg = args[0];
 
 if (firstArg && !firstArg.startsWith("-") && !subcommands.includes(firstArg)) {
