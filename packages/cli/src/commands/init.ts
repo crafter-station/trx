@@ -81,7 +81,7 @@ async function installViaBrew(name: string, brewPkg: string, isTTY: boolean): Pr
 
 		const isLockError = raw.includes("already locked") || raw.includes("Another `brew");
 		if (isLockError) {
-			if (isTTY) p.log.warn(`brew lock detected for ${name} — bottle was likely installed, verifying...`);
+			if (isTTY) p.log.warn(`brew lock detected for ${name}, bottle was likely installed, verifying...`);
 
 			try {
 				await spawn(["sh", "-c", "rm -f ~/Library/Caches/Homebrew/downloads/*.incomplete 2>/dev/null; echo ok"]);

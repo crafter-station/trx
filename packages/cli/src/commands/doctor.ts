@@ -124,8 +124,8 @@ export function createDoctorCommand(): Command {
 				const issues: string[] = [];
 				if (isOpenAI && !hasApiKey) issues.push("OPENAI_API_KEY not set");
 				if (isVercel && !hasGatewayKey) issues.push("AI_GATEWAY_API_KEY not set");
-				if (!coreDepsOk) issues.push('missing dependencies — run "trx init"');
-				if (!isCloud && !whisper.installed) issues.push('whisper-cli missing — run "trx init"');
+				if (!coreDepsOk) issues.push('missing dependencies, run "trx init"');
+				if (!isCloud && !whisper.installed) issues.push('whisper-cli missing, run "trx init"');
 				outputError(issues.join("; "), "table");
 			}
 		}

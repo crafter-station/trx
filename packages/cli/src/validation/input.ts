@@ -16,7 +16,7 @@ export function validateUrl(url: string): string {
 		throw new Error(`Invalid URL: must start with http:// or https://, got "${cleaned}"`);
 	}
 	if (cleaned.includes("..")) {
-		throw new Error("URL contains path traversal (..) — rejected");
+		throw new Error("URL contains path traversal (..), rejected");
 	}
 	return cleaned;
 }
@@ -24,10 +24,10 @@ export function validateUrl(url: string): string {
 export function validateFilePath(path: string): string {
 	const cleaned = rejectControlChars(path.trim());
 	if (cleaned.includes("..")) {
-		throw new Error("Path contains traversal (..) — rejected");
+		throw new Error("Path contains traversal (..), rejected");
 	}
 	if (/%[0-9a-f]{2}/i.test(cleaned)) {
-		throw new Error("Path contains URL-encoded characters — pass raw path");
+		throw new Error("Path contains URL-encoded characters, pass raw path");
 	}
 	if (!existsSync(cleaned)) {
 		throw new Error(`File not found: "${cleaned}"`);

@@ -43,6 +43,7 @@ export function createTranscribeCommand(): Command {
 		.option("-b, --backend <backend>", "transcription backend (local, openai, vercel)")
 		.option("--no-download", "skip yt-dlp (input must be local)")
 		.option("--no-clean", "skip ffmpeg audio cleaning")
+		.option("--no-chunk", "disable automatic chunking for oversized cloud uploads")
 		.option("--cookies-from-browser <browser>", "load yt-dlp cookies from browser")
 		.action(async (inputArg, opts, cmd) => {
 			const format: OutputFormat = cmd.optsWithGlobals().output;
@@ -149,6 +150,7 @@ export function createTranscribeCommand(): Command {
 					backend: effectiveBackend,
 					noDownload: opts.download === false,
 					noClean: opts.clean === false,
+					noChunk: opts.chunk === false,
 					cookiesFromBrowser,
 					onStep: (step) => {
 						if (spinner && !done) spinner.start(step);

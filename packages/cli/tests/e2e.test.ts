@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
+import { stitchSrt } from "../src/core/chunk.ts";
 
 const CLI = resolve(import.meta.dir, "../bin/trx.ts");
 
@@ -89,6 +90,7 @@ describe("trx schema", () => {
 		expect(flags).toHaveProperty("--fields");
 		expect(flags).toHaveProperty("--output");
 		expect(flags).toHaveProperty("--cookies-from-browser");
+		expect(flags).toHaveProperty("--no-chunk");
 	});
 
 	test("init schema returns valid JSON with deps info", async () => {
@@ -146,6 +148,47 @@ describe("trx models", () => {
 		expect(exitCode).toBe(1);
 		const data = parseJSON(stdout) as Record<string, unknown>;
 		expect(data.error).toContain("AI_GATEWAY_API_KEY");
+	});
+});
+
+describe("SRT stitching", () => {
+	test("renumbers entries and offsets timestamps across chunks", () => {
+		const stitched = stitchSrt([
+			{
+				srt: "7\n00:59:58,500 --> 00:59:59,500\nFirst\n",
+				durationSeconds: 3599.5,
+			},
+			{
+				srt: [
+					"3",
+					"00:00:00,000 --> 00:00:00,500",
+					"Boundary",
+					"",
+					"9",
+					"00:00:01,000 --> 00:00:02,000",
+					"After one hour",
+					"",
+				].join("\n"),
+				durationSeconds: 2,
+			},
+		]);
+
+		expect(stitched).toBe(
+			[
+				"1",
+				"00:59:58,500 --> 00:59:59,500",
+				"First",
+				"",
+				"2",
+				"00:59:59,500 --> 01:00:00,000",
+				"Boundary",
+				"",
+				"3",
+				"01:00:00,500 --> 01:00:01,500",
+				"After one hour",
+				"",
+			].join("\n"),
+		);
 	});
 });
 
