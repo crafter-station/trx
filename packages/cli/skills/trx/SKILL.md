@@ -8,7 +8,7 @@ description: |
   transcription, (5) user asks to extract text from a video.
 metadata:
   author: Railly Hugo
-  version: "0.4.4"
+  version: "0.5.0"
 ---
 
 # trx -- Agent-First Transcription CLI

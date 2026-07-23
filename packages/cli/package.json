@@ -1,6 +1,6 @@
 {
 	"name": "@crafter/trx",
-	"version": "0.4.4",
+	"version": "0.5.0",
 	"description": "Agent-first CLI for audio/video transcription via Whisper",
 	"module": "bin/trx.ts",
 	"type": "module",
