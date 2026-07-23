@@ -40,12 +40,17 @@ export function createDoctorCommand(): Command {
 
 		const backend = config?.backend || "local";
 		const hasApiKey = !!process.env.OPENAI_API_KEY;
+		const hasGatewayKey = !!process.env.AI_GATEWAY_API_KEY;
 		const isOpenAI = backend === "openai";
+		const isVercel = backend === "vercel";
+		const isCloud = isOpenAI || isVercel;
 		const coreDepsOk = ytdlp.installed && ffmpeg.installed;
 		const localDepsOk = coreDepsOk && whisper.installed;
 		const healthy = isOpenAI
 			? coreDepsOk && !!config && hasApiKey
-			: localDepsOk && !!config && modelExists;
+			: isVercel
+				? coreDepsOk && !!config && hasGatewayKey
+				: localDepsOk && !!config && modelExists;
 
 		const data = {
 			healthy,
@@ -54,6 +59,10 @@ export function createDoctorCommand(): Command {
 			openai: {
 				apiKey: hasApiKey,
 				model: config?.openai?.model || "gpt-4o-transcribe",
+			},
+			vercel: {
+				apiKey: hasGatewayKey,
+				model: config?.vercel?.model || "openai/whisper-1",
 			},
 			config: {
 				exists: !!config,
@@ -79,8 +88,12 @@ export function createDoctorCommand(): Command {
 				console.log(`  API Key: ${hasApiKey ? "\u2713" : "\u2717 (OPENAI_API_KEY not set)"}`);
 				console.log(`  API Model: ${config?.openai?.model || "gpt-4o-transcribe"}`);
 			}
+			if (isVercel) {
+				console.log(`  API Key: ${hasGatewayKey ? "\u2713" : "\u2717 (AI_GATEWAY_API_KEY not set)"}`);
+				console.log(`  API Model: ${config?.vercel?.model || "openai/whisper-1"}`);
+			}
 			console.log();
-			const deps = isOpenAI
+			const deps = isCloud
 				? ([
 						["yt-dlp", ytdlp],
 						["ffmpeg", ffmpeg],
@@ -98,7 +111,7 @@ export function createDoctorCommand(): Command {
 			console.log();
 			if (config) {
 				console.log(`  Config: ${configPath}`);
-				if (!isOpenAI) {
+				if (!isCloud) {
 					console.log(`  Model: ${config.modelSize} ${modelExists ? "\u2713" : "\u2717 (not downloaded)"}`);
 				}
 				console.log(`  Language: ${config.language}`);
@@ -110,8 +123,9 @@ export function createDoctorCommand(): Command {
 			if (!healthy) {
 				const issues: string[] = [];
 				if (isOpenAI && !hasApiKey) issues.push("OPENAI_API_KEY not set");
+				if (isVercel && !hasGatewayKey) issues.push("AI_GATEWAY_API_KEY not set");
 				if (!coreDepsOk) issues.push('missing dependencies — run "trx init"');
-				if (!isOpenAI && !whisper.installed) issues.push('whisper-cli missing — run "trx init"');
+				if (!isCloud && !whisper.installed) issues.push('whisper-cli missing — run "trx init"');
 				outputError(issues.join("; "), "table");
 			}
 		}

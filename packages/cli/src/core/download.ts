@@ -10,7 +10,11 @@ export interface DownloadOptions {
 	cookiesFromBrowser?: string;
 }
 
-export async function downloadMedia(url: string, outputDir: string, opts: DownloadOptions = {}): Promise<DownloadResult> {
+export async function downloadMedia(
+	url: string,
+	outputDir: string,
+	opts: DownloadOptions = {},
+): Promise<DownloadResult> {
 	const basename = `trx-${Date.now()}`;
 	const outputTemplate = `${outputDir}/${basename}.%(ext)s`;
 

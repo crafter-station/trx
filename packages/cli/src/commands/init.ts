@@ -6,7 +6,13 @@ import { Command } from "commander";
 import { type Backend, defaultConfig, ensureTrxDir, getModelsDir, writeConfig } from "../utils/config.ts";
 import { type OutputFormat, output, outputError } from "../utils/output.ts";
 import { spawn, spawnOrThrow } from "../utils/spawn.ts";
-import { validateBackend, validateLanguage, validateModel, validateOpenAIModel } from "../validation/input.ts";
+import {
+	validateBackend,
+	validateLanguage,
+	validateModel,
+	validateOpenAIModel,
+	validateVercelModel,
+} from "../validation/input.ts";
 
 const MODELS = [
 	{ value: "tiny", label: "tiny (~75 MB)", hint: "fastest, lowest accuracy" },
@@ -163,10 +169,7 @@ async function installWhisperLinux(isTTY: boolean): Promise<boolean> {
 
 		if (isTTY) p.log.step("Building whisper.cpp (this may take a few minutes)...");
 		await spawnOrThrow(["cmake", "-B", `${buildDir}/build`, "-S", buildDir], "cmake configure");
-		await spawnOrThrow(
-			["cmake", "--build", `${buildDir}/build`, "--config", "Release", "-j"],
-			"cmake build",
-		);
+		await spawnOrThrow(["cmake", "--build", `${buildDir}/build`, "--config", "Release", "-j"], "cmake build");
 
 		if (isTTY) p.log.step("Installing whisper-cli to /usr/local/bin...");
 		const binaryPath = `${buildDir}/build/bin/whisper-cli`;
@@ -232,16 +235,16 @@ async function installWhisperWindows(isTTY: boolean): Promise<boolean> {
 	const downloadUrl = `${WHISPER_CPP_RELEASE}/${zipName}`;
 	const downloadDir = join(tmpdir(), "whisper-download");
 	const zipPath = join(downloadDir, zipName);
-	const installDir = join(process.env.LOCALAPPDATA || join(process.env.USERPROFILE || "", "AppData", "Local"), "whisper-cpp");
+	const installDir = join(
+		process.env.LOCALAPPDATA || join(process.env.USERPROFILE || "", "AppData", "Local"),
+		"whisper-cpp",
+	);
 
 	try {
 		if (isTTY) p.log.step("Downloading whisper-cli...");
 
 		await spawnOrThrow(["cmd", "/c", "mkdir", downloadDir], "create temp dir").catch(() => {});
-		await spawnOrThrow(
-			["curl", "-L", "--progress-bar", "-o", zipPath, downloadUrl],
-			"download whisper-cli",
-		);
+		await spawnOrThrow(["curl", "-L", "--progress-bar", "-o", zipPath, downloadUrl], "download whisper-cli");
 
 		if (isTTY) p.log.step("Extracting...");
 		await spawnOrThrow(["cmd", "/c", "mkdir", installDir], "create install dir").catch(() => {});
@@ -253,7 +256,9 @@ async function installWhisperWindows(isTTY: boolean): Promise<boolean> {
 		if (isTTY) {
 			p.log.success("whisper-cli extracted");
 			p.log.info(`Add to PATH: ${installDir}`);
-			p.log.info('Run: [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";' + installDir + '", "User")');
+			p.log.info(
+				'Run: [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";' + installDir + '", "User")',
+			);
 		}
 
 		await spawn(["cmd", "/c", "rmdir", "/s", "/q", downloadDir]);
@@ -361,7 +366,7 @@ async function installSkill(isTTY: boolean): Promise<boolean> {
 export function createInitCommand(): Command {
 	return new Command("init")
 		.description("Install dependencies and download Whisper model")
-		.option("-b, --backend <backend>", "transcription backend (local, openai)")
+		.option("-b, --backend <backend>", "transcription backend (local, openai, vercel)")
 		.option("-m, --model <size>", "whisper model size", "small")
 		.option("-l, --language <code>", "default language (auto = detect from audio)", "auto")
 		.action(async (opts, cmd) => {
@@ -385,6 +390,7 @@ export function createInitCommand(): Command {
 						options: [
 							{ value: "local", label: "Local (whisper.cpp)", hint: "free, private, offline" },
 							{ value: "openai", label: "OpenAI API", hint: "fast, requires API key" },
+							{ value: "vercel", label: "Vercel AI Gateway", hint: "any provider, requires AI_GATEWAY_API_KEY" },
 						],
 						initialValue: "local",
 					});
@@ -393,6 +399,73 @@ export function createInitCommand(): Command {
 						process.exit(0);
 					}
 					selectedBackend = choice as Backend;
+				}
+
+				if (selectedBackend === "vercel") {
+					const apiKey = process.env.AI_GATEWAY_API_KEY;
+					if (!apiKey) {
+						outputError(
+							"AI_GATEWAY_API_KEY not set. Get one at https://vercel.com/docs/ai-gateway and export it: export AI_GATEWAY_API_KEY=...",
+							format,
+						);
+						return;
+					}
+					if (isTTY) p.log.success("AI_GATEWAY_API_KEY detected");
+
+					let selectedModel = "openai/whisper-1";
+					if (isTTY && !cmd.getOptionValueSource("model")) {
+						const answer = await p.text({
+							message: "Gateway model (creator/model-name):",
+							initialValue: "openai/whisper-1",
+							validate: (value) => {
+								try {
+									validateVercelModel(value);
+									return undefined;
+								} catch (e) {
+									return (e as Error).message;
+								}
+							},
+						});
+						if (p.isCancel(answer)) {
+							p.cancel("Init cancelled");
+							process.exit(0);
+						}
+						selectedModel = answer as string;
+					} else if (cmd.getOptionValueSource("model")) {
+						selectedModel = validateVercelModel(opts.model);
+					}
+
+					if (isTTY) p.log.step("Checking ffmpeg + yt-dlp (still needed for download/clean)...");
+					const hasFfmpeg = await installDep("ffmpeg", isTTY);
+					const hasYtdlp = await installDep("yt-dlp", isTTY);
+					if (!hasYtdlp || !hasFfmpeg) {
+						const missing = [!hasYtdlp && "yt-dlp", !hasFfmpeg && "ffmpeg"].filter(Boolean).join(", ");
+						outputError(`Missing dependencies: ${missing}`, format);
+						return;
+					}
+
+					const config = defaultConfig("small", language, "vercel");
+					config.vercel.model = selectedModel;
+					writeConfig(config);
+
+					if (isTTY) p.log.step("Agent skill setup...");
+					const skillInstalled = await installSkill(isTTY);
+
+					if (isTTY) {
+						p.outro(`trx is ready (vercel gateway, ${selectedModel}). Run: trx <url-or-file>`);
+					}
+
+					output(format, {
+						json: {
+							success: true,
+							backend: "vercel",
+							model: selectedModel,
+							language,
+							skillInstalled,
+							config,
+						},
+					});
+					return;
 				}
 
 				if (selectedBackend === "openai") {

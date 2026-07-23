@@ -4,7 +4,14 @@ import { Command } from "commander";
 import { type PipelineResult, runPipeline } from "../core/pipeline.ts";
 import { readConfig } from "../utils/config.ts";
 import { type OutputFormat, output, outputError } from "../utils/output.ts";
-import { validateBackend, validateInput, validateLanguage, validateModel, validateOpenAIModel } from "../validation/input.ts";
+import {
+	validateBackend,
+	validateInput,
+	validateLanguage,
+	validateModel,
+	validateOpenAIModel,
+	validateVercelModel,
+} from "../validation/input.ts";
 
 function filterFields(result: PipelineResult, fields?: string): Record<string, unknown> {
 	if (!fields) return result;
@@ -33,7 +40,7 @@ export function createTranscribeCommand(): Command {
 		.option("--json <payload>", "raw JSON input for agents")
 		.option("--output-dir <dir>", "output directory", ".")
 		.option("-w, --words", "word-level timestamps in SRT")
-		.option("-b, --backend <backend>", "transcription backend (local, openai)")
+		.option("-b, --backend <backend>", "transcription backend (local, openai, vercel)")
 		.option("--no-download", "skip yt-dlp (input must be local)")
 		.option("--no-clean", "skip ffmpeg audio cleaning")
 		.option("--cookies-from-browser <browser>", "load yt-dlp cookies from browser")
@@ -70,6 +77,8 @@ export function createTranscribeCommand(): Command {
 				if (modelOverride) {
 					if (effectiveBackend === "openai") {
 						validateOpenAIModel(modelOverride);
+					} else if (effectiveBackend === "vercel") {
+						validateVercelModel(modelOverride);
 					} else {
 						validateModel(modelOverride);
 					}
@@ -81,7 +90,9 @@ export function createTranscribeCommand(): Command {
 					const transcribeStep =
 						effectiveBackend === "openai"
 							? `transcribe via OpenAI ${modelOverride || config.openai.model}`
-							: "transcribe via whisper-cli";
+							: effectiveBackend === "vercel"
+								? `transcribe via Vercel AI Gateway ${modelOverride || config.vercel.model}`
+								: "transcribe via whisper-cli";
 					const downloadStep = cookiesFromBrowser
 						? `download via yt-dlp with ${cookiesFromBrowser} cookies`
 						: "download via yt-dlp";
@@ -96,7 +107,9 @@ export function createTranscribeCommand(): Command {
 							model:
 								effectiveBackend === "openai"
 									? modelOverride || config.openai.model
-									: modelOverride || config.modelSize,
+									: effectiveBackend === "vercel"
+										? modelOverride || config.vercel.model
+										: modelOverride || config.modelSize,
 							outputDir,
 							steps: [
 								...(parsedInput.type === "url" && opts.download !== false ? [downloadStep] : []),
@@ -118,6 +131,8 @@ export function createTranscribeCommand(): Command {
 				const effectiveConfig = { ...config };
 				if (effectiveBackend === "openai" && modelOverride) {
 					effectiveConfig.openai = { ...config.openai, model: modelOverride as typeof config.openai.model };
+				} else if (effectiveBackend === "vercel" && modelOverride) {
+					effectiveConfig.vercel = { ...config.vercel, model: modelOverride };
 				} else if (modelOverride) {
 					effectiveConfig.modelSize = modelOverride;
 					effectiveConfig.modelPath = config.modelPath.replace(/ggml-[\w.-]+\.bin/, `ggml-${modelOverride}.bin`);

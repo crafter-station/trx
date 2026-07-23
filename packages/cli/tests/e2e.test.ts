@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 
 const CLI = resolve(import.meta.dir, "../bin/trx.ts");
@@ -212,13 +212,7 @@ describe("input validation", () => {
 	});
 
 	test("rejects path traversal in file path", async () => {
-		const { stdout, exitCode } = await run([
-			"transcribe",
-			"../../etc/passwd",
-			"--dry-run",
-			"--output",
-			"json",
-		]);
+		const { stdout, exitCode } = await run(["transcribe", "../../etc/passwd", "--dry-run", "--output", "json"]);
 		expect(exitCode).toBe(1);
 		const data = parseJSON(stdout) as Record<string, unknown>;
 		expect(data.success).toBe(false);
@@ -226,13 +220,7 @@ describe("input validation", () => {
 	});
 
 	test("rejects URL-encoded file paths", async () => {
-		const { stdout, exitCode } = await run([
-			"transcribe",
-			"/tmp/%2e%2e/etc/passwd",
-			"--dry-run",
-			"--output",
-			"json",
-		]);
+		const { stdout, exitCode } = await run(["transcribe", "/tmp/%2e%2e/etc/passwd", "--dry-run", "--output", "json"]);
 		expect(exitCode).toBe(1);
 		const data = parseJSON(stdout) as Record<string, unknown>;
 		expect(data.success).toBe(false);
@@ -461,16 +449,63 @@ describe("backend selection", () => {
 		const data = parseJSON(stdout) as Record<string, unknown>;
 		expect(data.error).toContain("Unknown OpenAI model");
 	});
-});
 
-describe("trx shorthand", () => {
-	test("trx <url> delegates to transcribe", async () => {
+	test("--backend vercel shows gateway in dry-run plan", async () => {
 		const { stdout, exitCode } = await run([
+			"transcribe",
 			"https://example.com/video.mp4",
+			"--backend",
+			"vercel",
 			"--dry-run",
 			"--output",
 			"json",
 		]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.backend).toBe("vercel");
+		expect(data.model).toBe("openai/whisper-1");
+		const steps = data.steps as string[];
+		expect(steps.some((s) => s.includes("Vercel AI Gateway"))).toBe(true);
+	});
+
+	test("vercel backend accepts creator/model-name overrides", async () => {
+		const { stdout, exitCode } = await run([
+			"transcribe",
+			"https://example.com/video.mp4",
+			"--backend",
+			"vercel",
+			"--model",
+			"groq/whisper-large-v3",
+			"--dry-run",
+			"--output",
+			"json",
+		]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.model).toBe("groq/whisper-large-v3");
+	});
+
+	test("vercel backend rejects models without creator prefix", async () => {
+		const { stdout, exitCode } = await run([
+			"transcribe",
+			"https://example.com/video.mp4",
+			"--backend",
+			"vercel",
+			"--model",
+			"whisper-1",
+			"--dry-run",
+			"--output",
+			"json",
+		]);
+		expect(exitCode).toBe(1);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.error).toContain("creator/model-name");
+	});
+});
+
+describe("trx shorthand", () => {
+	test("trx <url> delegates to transcribe", async () => {
+		const { stdout, exitCode } = await run(["https://example.com/video.mp4", "--dry-run", "--output", "json"]);
 		expect(exitCode).toBe(0);
 		const data = parseJSON(stdout) as Record<string, unknown>;
 		expect(data.dryRun).toBe(true);
