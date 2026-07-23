@@ -45,7 +45,6 @@ jobs:
       - name: Lint
         run: bun x @biomejs/biome@2.4.10 check src tests
         working-directory: packages/cli
-        continue-on-error: true
 
       - name: Test
         run: bun test

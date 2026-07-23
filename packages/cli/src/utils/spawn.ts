@@ -21,16 +21,13 @@ export async function spawn(cmd: string[], opts?: { cwd?: string; timeout?: numb
 
 		if (opts?.timeout) {
 			const timeoutPromise = new Promise<never>((_, reject) => {
-				setTimeout(
-					() => {
-						killedByTimeout = true;
-						try {
-							proc.kill();
-						} catch {}
-						reject(new Error(`command timed out after ${opts.timeout}ms: ${cmd.join(" ")}`));
-					},
-					opts.timeout,
-				);
+				setTimeout(() => {
+					killedByTimeout = true;
+					try {
+						proc.kill();
+					} catch {}
+					reject(new Error(`command timed out after ${opts.timeout}ms: ${cmd.join(" ")}`));
+				}, opts.timeout);
 			});
 			[stdout, stderr] = (await Promise.race([pending, timeoutPromise])) as [string, string];
 		} else {

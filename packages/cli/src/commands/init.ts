@@ -256,9 +256,7 @@ async function installWhisperWindows(isTTY: boolean): Promise<boolean> {
 		if (isTTY) {
 			p.log.success("whisper-cli extracted");
 			p.log.info(`Add to PATH: ${installDir}`);
-			p.log.info(
-				'Run: [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";' + installDir + '", "User")',
-			);
+			p.log.info(`Run: [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";${installDir}", "User")`);
 		}
 
 		await spawn(["cmd", "/c", "rmdir", "/s", "/q", downloadDir]);
