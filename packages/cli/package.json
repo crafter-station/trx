@@ -4,6 +4,7 @@
 	"description": "Agent-first CLI for audio/video transcription via Whisper",
 	"module": "bin/trx.ts",
 	"type": "module",
+	"files": ["bin", "src", "schemas"],
 	"license": "MIT",
 	"homepage": "https://github.com/crafter-station/trx",
 	"repository": {
