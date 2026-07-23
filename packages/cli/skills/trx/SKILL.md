@@ -78,6 +78,8 @@ trx transcribe video.mp4 --json '{"input":"video.mp4","language":"es","backend":
 
 trx supports three backends: local Whisper (default), OpenAI API, and Vercel AI Gateway.
 
+Discover available transcription models with `trx models` or filter with `trx models --backend <name>`.
+
 ```bash
 # Local Whisper (default, offline, free)
 trx transcribe <input> --backend local
@@ -128,6 +130,7 @@ trx schema init
 | `init` | `trx init --model small` |
 | `transcribe` | `trx transcribe <url-or-file> --output json` |
 | `doctor` | `trx doctor --output json` |
+| `models` | `trx models --output json` |
 | `schema` | `trx schema transcribe` |
 
 ## Shorthand

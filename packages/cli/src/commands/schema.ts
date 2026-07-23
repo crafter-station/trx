@@ -5,7 +5,7 @@ import { outputJSON } from "../utils/output.ts";
 
 const SCHEMAS_DIR = join(dirname(dirname(import.meta.dir)), "schemas");
 
-const AVAILABLE_SCHEMAS = ["transcribe", "init"] as const;
+const AVAILABLE_SCHEMAS = ["transcribe", "init", "models"] as const;
 
 export function createSchemaCommand(): Command {
 	return new Command("schema")

@@ -158,7 +158,7 @@ export function validateLanguage(lang: string): WhisperLanguage {
 	return cleaned as WhisperLanguage;
 }
 
-const VALID_LOCAL_MODELS = [
+export const VALID_LOCAL_MODELS = [
 	"tiny",
 	"tiny.en",
 	"base",
@@ -172,7 +172,7 @@ const VALID_LOCAL_MODELS = [
 ] as const;
 export type WhisperModel = (typeof VALID_LOCAL_MODELS)[number];
 
-const VALID_OPENAI_MODELS = ["gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"] as const;
+export const VALID_OPENAI_MODELS = ["gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"] as const;
 export type OpenAITranscribeModel = (typeof VALID_OPENAI_MODELS)[number];
 
 export function validateModel(model: string): WhisperModel {
