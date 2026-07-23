@@ -302,7 +302,8 @@ describe("input validation", () => {
 	});
 });
 
-describe("trx transcribe (real file)", () => {
+// Real transcription needs whisper-cli + a downloaded model; skip on runners without them (TRX_SKIP_REAL=1)
+describe.skipIf(process.env.TRX_SKIP_REAL === "1")("trx transcribe (real file)", () => {
 	const testWav = resolve(import.meta.dir, "fixtures/silence.wav");
 
 	test("transcribes a real WAV file", async () => {
