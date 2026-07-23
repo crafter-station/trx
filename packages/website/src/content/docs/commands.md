@@ -27,6 +27,7 @@ The `transcribe` subcommand is optional — `trx <input>` works the same way.
 | `--dry-run` | Show execution plan without running | `false` |
 | `--no-download` | Skip yt-dlp (input must be local) | `false` |
 | `--no-clean` | Skip ffmpeg audio cleaning | `false` |
+| `--no-chunk` | Disable automatic chunking for oversized cloud uploads | `false` |
 | `--json` | Raw JSON payload for agents | — |
 | `-o, --output` | Output format: `json`, `table`, `auto` | `auto` |
 
@@ -53,7 +54,11 @@ The `transcribe` subcommand is optional — `trx <input>` works the same way.
 
 **Vercel AI Gateway:**
 
-Any transcription model on the [gateway](https://vercel.com/docs/ai-gateway/modalities/speech-to-text), addressed as `creator/model-name` (default `openai/whisper-1`). One `AI_GATEWAY_API_KEY` covers all providers. This is Vercel's AI Gateway, not Cloudflare's product of the same name.
+Any transcription model on the [gateway](https://vercel.com/docs/ai-gateway/modalities/speech-to-text), addressed as `creator/model-name` (default `openai/whisper-1`). One `AI_GATEWAY_API_KEY` covers all providers. This is Vercel's AI Gateway, not Cloudflare's product of the same name. Run `trx models` to see what is available.
+
+### Big files
+
+Cloud backends have upload limits (OpenAI 25 MB, gateway 100 MB). Files over the limit split automatically with ffmpeg, transcribe chunk by chunk, and stitch back into one continuous transcript and SRT with correct timestamps. Use `--no-chunk` to disable and fail fast instead.
 
 ### Examples
 
@@ -75,6 +80,26 @@ trx video.mp4 --output json --fields text
 
 # Dry run to preview
 trx video.mp4 --dry-run --output json
+```
+
+---
+
+## trx models
+
+List available transcription models per backend.
+
+```bash
+trx models [--backend local|openai|vercel] [--output json]
+```
+
+Local and OpenAI lists are static. The `vercel` backend queries the gateway live (requires `AI_GATEWAY_API_KEY`), so you always see what is actually available instead of guessing model slugs.
+
+```bash
+# All backends grouped
+trx models
+
+# Only gateway models, as JSON for agents
+trx models --backend vercel --output json
 ```
 
 ---
