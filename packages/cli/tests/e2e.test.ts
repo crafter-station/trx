@@ -475,14 +475,14 @@ describe("backend selection", () => {
 			"--backend",
 			"vercel",
 			"--model",
-			"groq/whisper-large-v3",
+			"xai/grok-stt",
 			"--dry-run",
 			"--output",
 			"json",
 		]);
 		expect(exitCode).toBe(0);
 		const data = parseJSON(stdout) as Record<string, unknown>;
-		expect(data.model).toBe("groq/whisper-large-v3");
+		expect(data.model).toBe("xai/grok-stt");
 	});
 
 	test("vercel backend rejects models without creator prefix", async () => {
