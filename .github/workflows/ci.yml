@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    env:
+      TRX_SKIP_REAL: "1"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Seed trx config
+        run: |
+          mkdir -p ~/.trx/models
+          cat > ~/.trx/config.json <<'EOF'
+          {
+            "backend": "local",
+            "modelPath": "~/.trx/models/ggml-small.bin",
+            "modelSize": "small",
+            "language": "auto",
+            "threads": 4,
+            "wordTimestamps": false,
+            "openai": { "model": "gpt-4o-transcribe" },
+            "whisperFlags": {
+              "suppressNst": true,
+              "noFallback": true,
+              "entropyThold": 2.8,
+              "logprobThold": -1.0,
+              "maxContext": 0
+            }
+          }
+          EOF
+
+      - name: Lint
+        run: bun x @biomejs/biome@2.4.10 check src tests
+        working-directory: packages/cli
+        continue-on-error: true
+
+      - name: Test
+        run: bun test
+        working-directory: packages/cli
