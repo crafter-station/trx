@@ -93,9 +93,9 @@ trx transcribe <input> --backend vercel -m openai/whisper-1
 ```
 
 OpenAI models:
-- `gpt-4o-transcribe` — SOTA accuracy (default for openai backend)
-- `gpt-4o-mini-transcribe` — cheapest
-- `whisper-1` — legacy, supports per-segment SRT timestamps
+- `gpt-4o-transcribe`: SOTA accuracy (default for openai backend)
+- `gpt-4o-mini-transcribe`: cheapest
+- `whisper-1`: legacy, supports per-segment SRT timestamps
 
 Vercel gateway models: any transcription model on the gateway, addressed as `creator/model-name` (default `openai/whisper-1`). One `AI_GATEWAY_API_KEY` covers all providers. This is Vercel's AI Gateway, not Cloudflare's product of the same name.
 
@@ -180,6 +180,7 @@ Full response includes `text`, `files`, `metadata`, `input`, `backend`.
 | `--fields <list>` | Limit output: text,srt,metadata,files (comma-separated) | all |
 | `--no-download` | Skip yt-dlp (input must be local) | false |
 | `--no-clean` | Skip ffmpeg audio cleaning | false |
+| `--no-chunk` | Disable automatic chunking for oversized cloud uploads | false |
 | `--cookies-from-browser <browser>` | Load yt-dlp cookies from browser (e.g. chrome, chrome:Default) | - |
 | `--json <payload>` | Raw JSON input for agents: {"input","language","model","backend","cookiesFromBrowser"} | - |
 | `--dry-run` | Validate input and show plan without executing | false |

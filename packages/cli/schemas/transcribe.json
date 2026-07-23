@@ -65,6 +65,11 @@
 			"default": false,
 			"description": "Skip ffmpeg audio cleaning/normalization"
 		},
+		"--no-chunk": {
+			"type": "boolean",
+			"default": false,
+			"description": "Disable automatic chunking for oversized OpenAI and Vercel uploads"
+		},
 		"--cookies-from-browser": {
 			"type": "string",
 			"description": "Pass browser cookies to yt-dlp for Instagram/private URLs, e.g. chrome or chrome:Default"

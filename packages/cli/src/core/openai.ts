@@ -1,6 +1,7 @@
 import { readFileSync, statSync } from "node:fs";
+import { unlink } from "node:fs/promises";
 import type { OpenAIModel } from "../utils/config.ts";
-import { spawn } from "../utils/spawn.ts";
+import { chunkAudio, probeDuration, stitchSrt } from "./chunk.ts";
 
 export interface OpenAITranscribeResult {
 	srtPath: string;
@@ -9,6 +10,11 @@ export interface OpenAITranscribeResult {
 }
 
 const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25 MB
+
+export interface OpenAITranscribeOptions {
+	onStep?: (step: string) => void;
+	noChunk?: boolean;
+}
 
 interface VerboseSegment {
 	start: number;
@@ -33,39 +39,34 @@ function supportsVerboseJson(model: OpenAIModel): boolean {
 	return model === "whisper-1";
 }
 
-async function probeDuration(audioPath: string): Promise<number> {
-	const result = await spawn([
-		"ffprobe",
-		"-v",
-		"quiet",
-		"-show_entries",
-		"format=duration",
-		"-of",
-		"csv=p=0",
-		audioPath,
-	]);
-	if (result.exitCode === 0) {
-		const dur = Number.parseFloat(result.stdout.trim());
-		if (!Number.isNaN(dur) && dur > 0) return dur;
-	}
-	return 0;
-}
-
 export async function transcribeOpenAI(
 	audioPath: string,
 	model: OpenAIModel,
 	language?: string,
+	options: OpenAITranscribeOptions = {},
 ): Promise<OpenAITranscribeResult> {
 	const apiKey = getOpenAIKey();
 
 	const stat = statSync(audioPath);
 	if (stat.size > MAX_FILE_SIZE) {
+		if (!options.noChunk) {
+			return transcribeOpenAIChunks(audioPath, model, language, apiKey, options.onStep);
+		}
 		const sizeMB = (stat.size / 1024 / 1024).toFixed(1);
 		throw new Error(
-			`File is ${sizeMB} MB — OpenAI API limit is 25 MB. Use --backend local for large files, or pre-split with ffmpeg.`,
+			`File is ${sizeMB} MB, OpenAI API limit is 25 MB. Use --backend local for large files, or pre-split with ffmpeg.`,
 		);
 	}
 
+	return transcribeOpenAISingle(audioPath, model, language, apiKey);
+}
+
+async function transcribeOpenAISingle(
+	audioPath: string,
+	model: OpenAIModel,
+	language: string | undefined,
+	apiKey: string,
+): Promise<OpenAITranscribeResult> {
 	const fileBuffer = readFileSync(audioPath);
 	const fileName = audioPath.split("/").pop() || "audio.wav";
 
@@ -113,6 +114,49 @@ export async function transcribeOpenAI(
 	await Bun.write(txtPath, text);
 
 	return { srtPath, txtPath, text };
+}
+
+async function transcribeOpenAIChunks(
+	audioPath: string,
+	model: OpenAIModel,
+	language: string | undefined,
+	apiKey: string,
+	onStep?: (step: string) => void,
+): Promise<OpenAITranscribeResult> {
+	const chunks = await chunkAudio(audioPath, MAX_FILE_SIZE);
+	const results: Array<{ text: string; srt: string; durationSeconds: number }> = [];
+
+	try {
+		for (const [index, chunk] of chunks.entries()) {
+			onStep?.(`Transcribing chunk ${index + 1}/${chunks.length}...`);
+			const result = await transcribeOpenAISingle(chunk.path, model, language, apiKey);
+			results.push({
+				text: result.text,
+				srt: await Bun.file(result.srtPath).text(),
+				durationSeconds: chunk.durationSeconds,
+			});
+		}
+
+		const text = results
+			.map((result) => result.text.trim())
+			.filter(Boolean)
+			.join(" ");
+		const srtContent = stitchSrt(results);
+		const srtPath = `${audioPath}.srt`;
+		const txtPath = audioPath.replace(/\.[^.]+$/, ".txt");
+
+		await Bun.write(srtPath, srtContent);
+		await Bun.write(txtPath, text);
+
+		return { srtPath, txtPath, text };
+	} finally {
+		await removeChunkArtifacts(chunks.map((chunk) => chunk.path));
+	}
+}
+
+async function removeChunkArtifacts(chunkPaths: string[]): Promise<void> {
+	const paths = chunkPaths.flatMap((path) => [path, `${path}.srt`, path.replace(/\.[^.]+$/, ".txt")]);
+	await Promise.allSettled(paths.map((path) => unlink(path)));
 }
 
 function formatTimestamp(seconds: number): string {

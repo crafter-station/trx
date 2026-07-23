@@ -15,6 +15,7 @@ export interface PipelineOptions {
 	backend?: Backend;
 	noDownload?: boolean;
 	noClean?: boolean;
+	noChunk?: boolean;
 	cookiesFromBrowser?: string;
 	onStep?: (step: string) => void;
 	onProgress?: (progress: WhisperProgress) => void;
@@ -65,7 +66,10 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 	if (backend === "vercel") {
 		const model = config.vercel.model;
 		opts.onStep?.(`Transcribing with Vercel AI Gateway (${model})...`);
-		const result = await transcribeVercel(audioInput, model, opts.language);
+		const result = await transcribeVercel(audioInput, model, opts.language, {
+			onStep: opts.onStep,
+			noChunk: opts.noChunk,
+		});
 
 		return {
 			success: true,
@@ -87,7 +91,10 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 	if (backend === "openai") {
 		const model = config.openai.model;
 		opts.onStep?.(`Transcribing with OpenAI ${model}...`);
-		const result = await transcribeOpenAI(audioInput, model, opts.language);
+		const result = await transcribeOpenAI(audioInput, model, opts.language, {
+			onStep: opts.onStep,
+			noChunk: opts.noChunk,
+		});
 
 		return {
 			success: true,
