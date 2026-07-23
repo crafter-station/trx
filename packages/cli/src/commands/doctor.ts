@@ -11,11 +11,10 @@ interface DepStatus {
 }
 
 async function checkBinary(name: string): Promise<DepStatus> {
-	const which = await spawn(["which", name]);
-	if (which.exitCode !== 0) {
+	const binPath = Bun.which(name);
+	if (!binPath) {
 		return { installed: false, version: null, path: null };
 	}
-	const binPath = which.stdout.trim();
 
 	const ver = await spawn([name, "--version"]);
 	const version = ver.exitCode === 0 ? ver.stdout.split("\n")[0].trim() : null;
