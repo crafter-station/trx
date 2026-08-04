@@ -1,0 +1,12 @@
+{
+  "projectTitle": "trx",
+  "description": "Agent-first CLI for audio/video transcription via Whisper, published as @crafter/trx",
+  "folders": [],
+  "excludeFolders": ["node_modules", "dist", ".next"],
+  "rules": [
+    "Install as @crafter/trx, not trx: `bunx @crafter/trx` or `npm install -g @crafter/trx`",
+    "The trx binary is a Bun script; Bun must be installed even when using npm/npx",
+    "Run `trx init` once before transcribing; it installs whisper-cli/yt-dlp/ffmpeg and downloads the model",
+    "Output is JSON automatically when piped; use `--fields text` to keep agent context small"
+  ]
+}

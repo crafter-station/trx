@@ -1,12 +1,12 @@
 {
 	"name": "@crafter/trx",
-	"version": "0.6.0",
+	"version": "0.6.1",
 	"description": "Agent-first CLI for audio/video transcription via Whisper",
 	"module": "bin/trx.ts",
 	"type": "module",
-	"files": ["bin", "src", "schemas"],
+	"files": ["bin", "src", "schemas", "AGENTS.md", "CLAUDE.md"],
 	"license": "MIT",
-	"homepage": "https://github.com/crafter-station/trx",
+	"homepage": "https://crafter.run/docs/trx",
 	"repository": {
 		"type": "git",
 		"url": "https://github.com/crafter-station/trx"
@@ -31,7 +31,8 @@
 	"scripts": {
 		"dev": "bun run bin/trx.ts",
 		"test": "bun test",
-		"check": "biome check --write ."
+		"check": "biome check --write .",
+		"prepublishOnly": "cp ../../README.md ./README.md && cp ../../LICENSE ./LICENSE"
 	},
 	"dependencies": {
 		"@clack/prompts": "^1.1.0",
