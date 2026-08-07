@@ -596,3 +596,72 @@ describe("trx shorthand", () => {
 		expect(data.inputType).toBe("url");
 	});
 });
+
+describe("trx skills", () => {
+	test("list returns the bundled skill", async () => {
+		const { stdout, exitCode } = await run(["--output", "json", "skills", "list"]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as { success: boolean; data: { name: string; description: string }[] };
+		expect(data.success).toBe(true);
+		expect(data.data.some((s) => s.name === "trx")).toBe(true);
+	});
+
+	test("list is the default subcommand", async () => {
+		const { stdout, exitCode } = await run(["--output", "json", "skills"]);
+		expect(exitCode).toBe(0);
+		expect((parseJSON(stdout) as { success: boolean }).success).toBe(true);
+	});
+
+	test("multi-line frontmatter descriptions are parsed, not left as a block marker", async () => {
+		const { stdout } = await run(["--output", "json", "skills", "list"]);
+		const data = parseJSON(stdout) as { data: { name: string; description: string }[] };
+		const trx = data.data.find((s) => s.name === "trx");
+		expect(trx?.description).not.toBe("|");
+		expect(trx?.description).toContain("Transcribe");
+	});
+
+	test("get prints raw markdown to stdout in human mode", async () => {
+		const { stdout, exitCode } = await run(["--output", "table", "skills", "get", "trx"]);
+		expect(exitCode).toBe(0);
+		expect(stdout.startsWith("---")).toBe(true);
+		expect(stdout).toContain("name: trx");
+	});
+
+	test("--full appends references", async () => {
+		const plain = await run(["--output", "table", "skills", "get", "trx"]);
+		const full = await run(["--output", "table", "skills", "get", "trx", "--full"]);
+		expect(full.exitCode).toBe(0);
+		expect(full.stdout.length).toBeGreaterThan(plain.stdout.length);
+		expect(full.stdout).toContain("references/whisper-fixes.md");
+	});
+
+	test("get without a name errors and names what is available", async () => {
+		const { stdout, exitCode } = await run(["--output", "json", "skills", "get"]);
+		expect(exitCode).toBe(1);
+		const data = parseJSON(stdout) as { success: boolean; error: string };
+		expect(data.success).toBe(false);
+		expect(data.error).toContain("trx");
+	});
+
+	test("get with an unknown name errors", async () => {
+		const { exitCode } = await run(["--output", "json", "skills", "get", "no-such-skill"]);
+		expect(exitCode).toBe(1);
+	});
+
+	test("path prints the skill directory", async () => {
+		const { stdout, exitCode } = await run(["--output", "json", "skills", "path", "trx"]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as { data: { path: string } };
+		expect(data.data.path.endsWith("skills/trx")).toBe(true);
+	});
+
+	test("TRX_SKILLS_DIR pointing nowhere fails with a message naming the variable", async () => {
+		const { stdout, exitCode } = await run(["--output", "json", "skills", "list"], {
+			...process.env,
+			FORCE_COLOR: "0",
+			TRX_SKILLS_DIR: "/nonexistent-skills-dir",
+		});
+		expect(exitCode).toBe(1);
+		expect((parseJSON(stdout) as { error: string }).error).toContain("TRX_SKILLS_DIR");
+	});
+});
