@@ -38,7 +38,7 @@ export function createTranscribeCommand(): Command {
 		.option("--fields <fields>", "limit output fields: text,srt,metadata,files")
 		.option("--dry-run", "validate input without transcribing")
 		.option("--json <payload>", "raw JSON input for agents")
-		.option("--output-dir <dir>", "output directory", ".")
+		.option("--output-dir <dir>", "output directory, created if missing", ".")
 		.option("-w, --words", "word-level timestamps in SRT")
 		.option("-b, --backend <backend>", "transcription backend (local, openai, vercel)")
 		.option("--no-download", "skip yt-dlp (input must be local)")
