@@ -8,7 +8,7 @@ description: |
   transcription, (5) user asks to extract text from a video.
 metadata:
   author: Railly Hugo
-  version: "0.5.0"
+  version: "0.6.1"
 ---
 
 # trx -- Agent-First Transcription CLI
@@ -175,7 +175,7 @@ Full response includes `text`, `files`, `metadata`, `input`, `backend`.
 | `-l, --language <code>` | ISO 639-1 language code | `auto` (from config) |
 | `-m, --model <size>` | Override model: tiny, base, small, medium, large-v3-turbo, large, gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1, or creator/model-name for vercel | from config |
 | `-w, --words` | Word-level timestamps in SRT | false |
-| `--output-dir <dir>` | Output directory | `.` (cwd) |
+| `--output-dir <dir>` | Output directory, created if missing | `.` (cwd) |
 | `--output <format>` | `json`, `table`, or `auto` | auto (TTY=table, piped=json) |
 | `--fields <list>` | Limit output: text,srt,metadata,files (comma-separated) | all |
 | `--no-download` | Skip yt-dlp (input must be local) | false |
