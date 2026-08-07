@@ -74,11 +74,11 @@ Raw JSON payload (preferred for agents, avoids shell quoting issues):
 trx transcribe video.mp4 --json '{"input":"video.mp4","language":"es","backend":"local"}' --output json
 ```
 
-### Backends (v0.4.0+)
+### Backends
 
-trx supports three backends: local Whisper (default), OpenAI API, and Vercel AI Gateway.
+trx v0.6.1 supports three backends: local Whisper (default), OpenAI API, and Vercel AI Gateway.
 
-Discover available transcription models with `trx models` or filter with `trx models --backend <name>`.
+Discover available transcription models with `trx models`, or filter with `trx models --backend <name>`.
 
 ```bash
 # Local Whisper (default, offline, free)
@@ -88,20 +88,36 @@ trx transcribe <input> --backend local
 export OPENAI_API_KEY=sk-...
 trx transcribe <input> --backend openai
 
-# Vercel AI Gateway (any provider's transcription model, requires AI_GATEWAY_API_KEY)
-trx transcribe <input> --backend vercel -m openai/whisper-1
+# Vercel AI Gateway (requires AI_GATEWAY_API_KEY)
+export AI_GATEWAY_API_KEY=...
+trx transcribe <input> --backend vercel --model openai/whisper-1
 ```
 
 OpenAI models:
-- `gpt-4o-transcribe`: SOTA accuracy (default for openai backend)
-- `gpt-4o-mini-transcribe`: cheapest
-- `whisper-1`: legacy, supports per-segment SRT timestamps
+- `gpt-4o-transcribe` — SOTA accuracy (default for openai backend)
+- `gpt-4o-mini-transcribe` — cheapest
+- `whisper-1` — legacy, supports per-segment SRT timestamps
 
-Vercel gateway models: any transcription model on the gateway, addressed as `creator/model-name` (default `openai/whisper-1`). One `AI_GATEWAY_API_KEY` covers all providers. This is Vercel's AI Gateway, not Cloudflare's product of the same name.
+Vercel model IDs use `creator/model-name` format. The default is `openai/whisper-1`. One `AI_GATEWAY_API_KEY` covers every provider on the gateway. Use a transcription model returned by `trx models --backend vercel`; this is Vercel AI Gateway, not Cloudflare AI Gateway.
 
-Local models: `tiny`, `base`, `small`, `medium`, `large-v3-turbo`, `large`.
+Local models: `tiny`, `tiny.en`, `base`, `base.en`, `small`, `small.en`, `medium`, `medium.en`, `large`, `large-v3-turbo`.
 
-Set backend persistently via `trx init --backend openai`, `trx init --backend vercel`, or in config.
+Set the backend persistently with `trx init --backend vercel` (or `local`/`openai`) or in config.
+
+#### Model discovery
+
+```bash
+trx models
+trx models --backend local --output json
+trx models --backend openai --output json
+trx models --backend vercel --output json
+```
+
+Local and OpenAI model lists are static. Vercel models are fetched live from the gateway and filtered to transcription models, so do not hard-code that list. `AI_GATEWAY_API_KEY` is required when requesting only the Vercel backend. Without it, the all-backends view still returns local and OpenAI models plus a Vercel error.
+
+#### Automatic cloud-file chunking
+
+OpenAI uploads over 25 MB and Vercel uploads over 100 MB are chunked automatically with ffmpeg. trx transcribes chunks sequentially, joins their text in order, offsets and renumbers SRT timestamps, and removes intermediate chunk files. Use `--no-chunk` to disable this behavior and fail on an oversized cloud upload.
 
 ### 3. Post-process (fix whisper mistakes)
 
@@ -121,7 +137,10 @@ After transcription, read the `.txt` output and apply corrections. Read [whisper
 ```bash
 trx schema transcribe
 trx schema init
+trx schema models
 ```
+
+These are the three schemas available in v0.6.1. Use `trx <command> --help` for the runtime CLI flags.
 
 ## Commands
 
@@ -173,14 +192,14 @@ Full response includes `text`, `files`, `metadata`, `input`, `backend`.
 |------|-------------|---------|
 | `-b, --backend <name>` | `local`, `openai`, or `vercel` | from config (`local`) |
 | `-l, --language <code>` | ISO 639-1 language code | `auto` (from config) |
-| `-m, --model <size>` | Override model: tiny, base, small, medium, large-v3-turbo, large, gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1, or creator/model-name for vercel | from config |
+| `-m, --model <size>` | Override model: a local model, an OpenAI model, or `creator/model-name` for Vercel | from config |
 | `-w, --words` | Word-level timestamps in SRT | false |
 | `--output-dir <dir>` | Output directory, created if missing | `.` (cwd) |
-| `--output <format>` | `json`, `table`, or `auto` | auto (TTY=table, piped=json) |
+| `-o, --output <format>` | `json`, `table`, or `auto`. Global flag, goes before the subcommand | auto (TTY=table, piped=json) |
 | `--fields <list>` | Limit output: text,srt,metadata,files (comma-separated) | all |
 | `--no-download` | Skip yt-dlp (input must be local) | false |
 | `--no-clean` | Skip ffmpeg audio cleaning | false |
-| `--no-chunk` | Disable automatic chunking for oversized cloud uploads | false |
+| `--no-chunk` | Disable automatic chunking for oversized OpenAI and Vercel uploads | false |
 | `--cookies-from-browser <browser>` | Load yt-dlp cookies from browser (e.g. chrome, chrome:Default) | - |
 | `--json <payload>` | Raw JSON input for agents: {"input","language","model","backend","cookiesFromBrowser"} | - |
 | `--dry-run` | Validate input and show plan without executing | false |
@@ -203,8 +222,10 @@ Config stored at `~/.trx/config.json` after `trx init`:
 
 - **yt-dlp extension mismatch**: yt-dlp sometimes outputs `.mp4.webm` instead of `.mp4`. The CLI handles this by scanning for the downloaded file by prefix.
 - **Instagram empty media response**: Retry with `--cookies-from-browser chrome` or `--cookies-from-browser chrome:Default`. If it still fails, update yt-dlp (`brew upgrade yt-dlp`) and confirm the reel opens in that browser profile.
-- **Large files (>1hr)**: Whisper processes in segments. Works but is slow on CPU. Consider `--model tiny` for speed or switch to `--backend openai`.
-- **No GPU**: `whisper-cli` uses CPU by default. Acceptable for tiny/base/small. For medium/large use `large-v3-turbo` or OpenAI backend.
-- **Auto-detect language**: When `--language auto`, Whisper detects language from first 30 seconds. For multilingual content, specify primary language via `--language es`.
-- **OpenAI backend fails**: Ensure `OPENAI_API_KEY` is set. Run `trx doctor --output json` to verify. For agents: `echo $OPENAI_API_KEY` should be non-empty, else error is expected.
+- **Oversized cloud uploads**: Chunking is automatic above 25 MB for OpenAI and 100 MB for Vercel. Remove `--no-chunk` if you want trx to split the file. If trx cannot determine the audio duration for chunking, confirm `ffprobe` is available with `command -v ffprobe`; it is installed with ffmpeg.
+- **Slow local transcription**: Use a smaller local model such as `tiny` or `base`, or switch to the OpenAI or Vercel backend.
+- **Multilingual content**: Specify the primary language with `--language es` instead of relying on `auto`.
+- **OpenAI backend fails**: Ensure `OPENAI_API_KEY` is set, then run `trx doctor --output json`. Do not print the key.
+- **Vercel backend fails**: Ensure `AI_GATEWAY_API_KEY` is set, run `trx doctor --output json`, and confirm the model with `trx models --backend vercel --output json`. Model IDs must use `creator/model-name` format.
+- **`trx models` reports a missing gateway key**: `trx models` without a backend still returns local and OpenAI lists plus a Vercel error. `trx models --backend vercel` requires `AI_GATEWAY_API_KEY` and exits with an error when it is absent.
 - **npm vs bun**: Package requires `bun >=1.0.0` runtime (engines field). `npm i -g @crafter/trx` works if `bun` is installed globally (`curl -fsSL https://bun.sh/install | bash`). `bun add -g` is recommended.
