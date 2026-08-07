@@ -8,7 +8,7 @@ description: |
   transcription, (5) user asks to extract text from a video.
 metadata:
   author: Railly Hugo
-  version: "0.6.1"
+  version: "0.7.0"
 ---
 
 # trx -- Agent-First Transcription CLI
@@ -76,7 +76,7 @@ trx transcribe video.mp4 --json '{"input":"video.mp4","language":"es","backend":
 
 ### Backends
 
-trx v0.6.1 supports three backends: local Whisper (default), OpenAI API, and Vercel AI Gateway.
+trx v0.7.0 supports three backends: local Whisper (default), OpenAI API, and Vercel AI Gateway.
 
 Discover available transcription models with `trx models`, or filter with `trx models --backend <name>`.
 
@@ -140,7 +140,7 @@ trx schema init
 trx schema models
 ```
 
-These are the three schemas available in v0.6.1. Use `trx <command> --help` for the runtime CLI flags.
+These are the three schemas available in v0.7.0. Use `trx <command> --help` for the runtime CLI flags.
 
 ## Commands
 
@@ -151,6 +151,20 @@ These are the three schemas available in v0.6.1. Use `trx <command> --help` for 
 | `doctor` | `trx doctor --output json` |
 | `models` | `trx models --output json` |
 | `schema` | `trx schema transcribe` |
+| `skills` | `trx skills get trx --full` |
+
+## Loading this skill
+
+This file ships with the CLI, so it can be read straight from an install instead of being copied around:
+
+```bash
+trx skills list              # what is bundled
+trx skills get trx           # this file, raw markdown on stdout
+trx skills get trx --full    # plus references/
+trx skills path trx          # where it lives on disk
+```
+
+`--output json` works on each. `TRX_SKILLS_DIR` overrides where trx looks for the directory.
 
 ## Shorthand
 
