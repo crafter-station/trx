@@ -4,6 +4,7 @@ import { createDoctorCommand } from "../src/commands/doctor.ts";
 import { createInitCommand } from "../src/commands/init.ts";
 import { createModelsCommand } from "../src/commands/models.ts";
 import { createSchemaCommand } from "../src/commands/schema.ts";
+import { createSkillsCommand } from "../src/commands/skills.ts";
 import { createTranscribeCommand } from "../src/commands/transcribe.ts";
 
 const program = new Command();
@@ -27,12 +28,14 @@ program.addCommand(createTranscribeCommand());
 program.addCommand(createDoctorCommand());
 program.addCommand(createModelsCommand());
 program.addCommand(createSchemaCommand());
+program.addCommand(createSkillsCommand());
 
 const args = process.argv.slice(2);
-const subcommands = ["init", "transcribe", "doctor", "models", "schema", "help", "--help", "-h", "--version", "-V"];
+const subcommands = program.commands.map((c) => c.name());
+const globalFlags = ["--help", "-h", "--version", "-V"];
 const firstArg = args[0];
 
-if (firstArg && !firstArg.startsWith("-") && !subcommands.includes(firstArg)) {
+if (firstArg && !firstArg.startsWith("-") && !subcommands.includes(firstArg) && !globalFlags.includes(firstArg)) {
 	process.argv.splice(2, 0, "transcribe");
 }
 
