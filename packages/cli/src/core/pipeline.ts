@@ -1,3 +1,4 @@
+import { mkdir } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import type { Backend, TrxConfig } from "../utils/config.ts";
 import { cleanAudio } from "./audio.ts";
@@ -41,6 +42,8 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 	const { config, outputDir } = opts;
 	const backend = opts.backend || config.backend || "local";
 	let inputFile: string;
+
+	await mkdir(outputDir, { recursive: true });
 
 	if (opts.inputType === "url" && !opts.noDownload) {
 		opts.onStep?.("Downloading media...");

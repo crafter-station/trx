@@ -22,7 +22,7 @@ The `transcribe` subcommand is optional — `trx <input>` works the same way.
 | `-l, --language` | ISO 639-1 language code | `auto` |
 | `-m, --model` | Override model size | from config |
 | `-w, --words` | Word-level timestamps in SRT | `false` |
-| `--output-dir` | Directory for output files | `.` |
+| `--output-dir` | Directory for output files, created if missing | `.` |
 | `--fields` | Limit output: `text,srt,metadata,files` | all |
 | `--dry-run` | Show execution plan without running | `false` |
 | `--no-download` | Skip yt-dlp (input must be local) | `false` |
