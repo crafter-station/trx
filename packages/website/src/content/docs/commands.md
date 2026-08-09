@@ -22,6 +22,8 @@ The `transcribe` subcommand is optional — `trx <input>` works the same way.
 | `-l, --language` | ISO 639-1 language code | `auto` |
 | `-m, --model` | Override model size | from config |
 | `-w, --words` | Word-level timestamps in SRT | `false` |
+| `--preset` | `verbatim` keeps fillers and false starts; needs `--language` | none |
+| `--prompt` | Initial prompt in the spoken language; beats `--preset` | none |
 | `--output-dir` | Directory for output files, created if missing | `.` |
 | `--fields` | Limit output: `text,srt,metadata,files` | all |
 | `--dry-run` | Show execution plan without running | `false` |

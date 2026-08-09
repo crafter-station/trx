@@ -208,12 +208,19 @@ export function validateBackend(backend: string): "local" | "openai" | "vercel" 
  */
 export function validateOutputFormat(format: string): "json" | "table" | "auto" {
 	const cleaned = format.trim().toLowerCase();
-	if (cleaned !== "json" && cleaned !== "table" && cleaned !== "auto") {
-		throw new Error(
-			`Unknown output format: "${format}". Available: json, table, auto. To choose where files are written, use --output-dir.`,
-		);
+	if (cleaned === "json" || cleaned === "table" || cleaned === "auto") {
+		return cleaned;
 	}
-	return cleaned;
+	// The directory hint only when the value looks like one. `--output` appears about three
+	// times as often as `--output-dir` across this repo's own docs, so most bad values are a
+	// mistyped format rather than a misdirected path, and appending advice about a different
+	// flag to every one of those adds noise to the common case to serve the rare one.
+	const looksLikePath = cleaned.includes("/") || cleaned.startsWith(".") || cleaned.startsWith("~");
+	throw new Error(
+		`Unknown output format: "${format}". Available: json, table, auto.${
+			looksLikePath ? " To choose where files are written, use --output-dir." : ""
+		}`,
+	);
 }
 
 export function validateVercelModel(model: string): string {

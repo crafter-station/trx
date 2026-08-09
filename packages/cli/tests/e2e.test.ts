@@ -758,5 +758,13 @@ describe("validateOutputFormat", () => {
 	// used to look from outside like the directory flag being ignored.
 	test("points a misdirected path at the flag that takes one", () => {
 		expect(() => validateOutputFormat("/tmp/somewhere")).toThrow(/--output-dir/);
+		expect(() => validateOutputFormat("./out")).toThrow(/--output-dir/);
+	});
+
+	// --output appears about three times as often as --output-dir across this repo's own
+	// docs, so most bad values are a mistyped format. Naming a different flag at those adds
+	// noise to the frequent case to serve the rare one.
+	test("keeps the directory hint out of a plain typo", () => {
+		expect(() => validateOutputFormat("jsonn")).toThrow(/Available: json, table, auto\.$/);
 	});
 });

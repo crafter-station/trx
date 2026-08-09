@@ -1,6 +1,6 @@
 {
 	"name": "@crafter/trx",
-	"version": "0.7.1",
+	"version": "0.8.0",
 	"description": "Agent-first CLI for audio/video transcription via Whisper",
 	"module": "bin/trx.ts",
 	"type": "module",
@@ -10,7 +10,8 @@
 		"schemas",
 		"skills",
 		"AGENTS.md",
-		"CLAUDE.md"
+		"CLAUDE.md",
+		"CHANGELOG.md"
 	],
 	"license": "MIT",
 	"homepage": "https://crafter.run/docs/trx",
