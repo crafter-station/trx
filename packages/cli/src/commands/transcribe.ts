@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import * as p from "@clack/prompts";
 import { Command } from "commander";
 import { type PipelineResult, runPipeline } from "../core/pipeline.ts";
+import { presetLanguages, presetPrompt } from "../core/prompts.ts";
 import { readConfig } from "../utils/config.ts";
 import { type OutputFormat, output, outputError } from "../utils/output.ts";
 import {
@@ -40,6 +41,8 @@ export function createTranscribeCommand(): Command {
 		.option("--json <payload>", "raw JSON input for agents")
 		.option("--output-dir <dir>", "output directory, created if missing", ".")
 		.option("-w, --words", "word-level timestamps in SRT")
+		.option("--preset <name>", "verbatim: keep fillers, hesitations and false starts")
+		.option("--prompt <text>", "initial prompt passed to the model, in the spoken language")
 		.option("-b, --backend <backend>", "transcription backend (local, openai, vercel)")
 		.option("--no-download", "skip yt-dlp (input must be local)")
 		.option("--no-clean", "skip ffmpeg audio cleaning")
@@ -141,6 +144,28 @@ export function createTranscribeCommand(): Command {
 
 				if (opts.words) effectiveConfig.wordTimestamps = true;
 
+				// An explicit --prompt wins: the caller wrote it for this recording. A preset
+				// resolves against the language, and when it has no prompt for that language it
+				// says so rather than falling back to another one, because a prompt in the wrong
+				// language steers the model worse than no prompt at all.
+				let prompt: string | null = opts.prompt ?? null;
+				if (prompt === null && opts.preset) {
+					if (opts.preset !== "verbatim") {
+						throw new Error(`unknown preset: ${opts.preset}. Available: verbatim`);
+					}
+					if (!language) {
+						throw new Error(
+							"--preset verbatim needs the spoken language: pass --language. A prompt only works in the language being transcribed.",
+						);
+					}
+					prompt = presetPrompt("verbatim", language);
+					if (prompt === null) {
+						throw new Error(
+							`--preset verbatim has no prompt for "${language}". Available: ${presetLanguages().join(", ")}. Write one for this recording with --prompt "<text in ${language}>".`,
+						);
+					}
+				}
+
 				const result = await runPipeline({
 					input: parsedInput.value,
 					inputType: parsedInput.type,
@@ -152,6 +177,7 @@ export function createTranscribeCommand(): Command {
 					noClean: opts.clean === false,
 					noChunk: opts.chunk === false,
 					cookiesFromBrowser,
+					prompt,
 					onStep: (step) => {
 						if (spinner && !done) spinner.start(step);
 					},

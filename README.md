@@ -46,9 +46,29 @@ trx transcribe video.mp4 --dry-run --output json
 # Specify language
 trx transcribe video.mp4 --language es
 
+# Keep fillers and false starts instead of a cleaned-up transcript
+trx transcribe video.mp4 --words --language es --preset verbatim
+
 # Schema introspection for agents
 trx schema transcribe
 ```
+
+### Verbatim transcripts
+
+A transcriber cleans by default: it writes what it believes was meant, so hesitations,
+stretched vowels and false starts are dropped as noise. That is what you want for captions
+and the opposite of what you want when the transcript drives an edit, because those spans are
+exactly the ones worth cutting.
+
+`--preset verbatim` sends an initial prompt asking for a literal transcript. The prompt has to
+be written in the language being spoken, so the preset needs `--language` and covers the
+languages it has a prompt for (`de`, `en`, `es`, `fr`, `it`, `pt`). Any other language is an
+error naming what is available rather than a prompt in the wrong language, which steers the
+model worse than none. Use `--prompt "<text>"` to write your own.
+
+> Known limitation: the transcription path currently removes silence before transcribing,
+> which deletes the pauses these hesitations live around, so the preset has little to work
+> with today. See [#35](https://github.com/crafter-station/trx/issues/35).
 
 ## Commands
 

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { stitchSrt } from "../src/core/chunk.ts";
+import { presetLanguages, presetPrompt } from "../src/core/prompts.ts";
 import { buildWhisperArgs } from "../src/core/whisper.ts";
 
 const CLI = resolve(import.meta.dir, "../bin/trx.ts");
@@ -697,7 +698,40 @@ describe("buildWhisperArgs", () => {
 		expect(args[args.indexOf("--max-len") + 1]).toBe("1");
 	});
 
+	test("passes an initial prompt through when one is given", () => {
+		const args = buildWhisperArgs(config as never, "/tmp/a.wav", "es", "Transcripción literal.");
+		expect(args[args.indexOf("--prompt") + 1]).toBe("Transcripción literal.");
+	});
+
+	test("adds no prompt flag when there is none, so old invocations are unchanged", () => {
+		expect(buildWhisperArgs(config as never, "/tmp/a.wav", "es")).not.toContain("--prompt");
+		expect(buildWhisperArgs(config as never, "/tmp/a.wav", "es", null)).not.toContain("--prompt");
+	});
+
 	test("omits the language flag when detection is automatic", () => {
 		expect(buildWhisperArgs(config as never, "/tmp/a.wav", "auto")).not.toContain("--language");
+	});
+});
+
+describe("verbatim preset", () => {
+	test("carries a prompt written in the language being transcribed", () => {
+		expect(presetPrompt("verbatim", "es")).toContain("muletillas");
+		expect(presetPrompt("verbatim", "en")).toContain("fillers");
+	});
+
+	test("is case insensitive about the language tag", () => {
+		expect(presetPrompt("verbatim", "ES")).toBe(presetPrompt("verbatim", "es"));
+	});
+
+	// A prompt written for one language steers the model worse than no prompt at all, so an
+	// unsupported language returns nothing and the caller reports it rather than falling back.
+	test("returns nothing for a language with no prompt of its own", () => {
+		expect(presetPrompt("verbatim", "ja")).toBeNull();
+	});
+
+	test("lists the languages it actually has prompts for", () => {
+		const languages = presetLanguages();
+		expect(languages).toContain("es");
+		expect(languages).not.toContain("ja");
 	});
 });

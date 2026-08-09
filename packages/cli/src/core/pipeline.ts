@@ -18,6 +18,8 @@ export interface PipelineOptions {
 	noClean?: boolean;
 	noChunk?: boolean;
 	cookiesFromBrowser?: string;
+	/** Initial prompt for the model, already resolved to the spoken language. */
+	prompt?: string | null;
 	onStep?: (step: string) => void;
 	onProgress?: (progress: WhisperProgress) => void;
 }
@@ -117,7 +119,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 	}
 
 	opts.onStep?.("Transcribing with Whisper...");
-	const result = await transcribe(audioInput, config, opts.language, opts.onProgress);
+	const result = await transcribe(audioInput, config, opts.language, opts.onProgress, opts.prompt);
 
 	return {
 		success: true,

@@ -12,7 +12,12 @@ export interface WhisperResult {
 	text: string;
 }
 
-export function buildWhisperArgs(config: WhisperConfig, wavPath: string, language: string): string[] {
+export function buildWhisperArgs(
+	config: WhisperConfig,
+	wavPath: string,
+	language: string,
+	prompt?: string | null,
+): string[] {
 	const args = [
 		"whisper-cli",
 		"-m",
@@ -25,6 +30,13 @@ export function buildWhisperArgs(config: WhisperConfig, wavPath: string, languag
 		config.wordTimestamps ? "1" : "0",
 		"--output-srt",
 	];
+
+	// Without this the model writes what it believes was meant, dropping the hesitations and
+	// false starts that an editing pass exists to find. A prompt has to be in the language
+	// being transcribed, which is why the caller resolves it rather than this function.
+	if (prompt) {
+		args.push("--prompt", prompt);
+	}
 
 	// --max-len 1 caps a cue at one token, not one word, so without this a multi-token word
 	// arrives split: "Crafter" as "Cra" + "fter". The result still looks word-level, since
@@ -55,13 +67,14 @@ export async function transcribe(
 	config: TrxConfig,
 	languageOverride?: string,
 	onProgress?: (progress: WhisperProgress) => void,
+	prompt?: string | null,
 ): Promise<WhisperResult> {
 	if (!existsSync(config.modelPath)) {
 		throw new Error(`Whisper model not found: ${config.modelPath}\nRun "trx init" to download a model.`);
 	}
 
 	const language = languageOverride || config.language;
-	const args = buildWhisperArgs(config, wavPath, language);
+	const args = buildWhisperArgs(config, wavPath, language, prompt);
 
 	if (onProgress) {
 		args.push("--print-progress");
