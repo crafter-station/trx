@@ -1,103 +1,119 @@
 {
-	"command": "transcribe",
-	"description": "Transcribe audio/video from URL or local file using Whisper (local), OpenAI API, or Vercel AI Gateway",
-	"arguments": {
-		"input": {
-			"type": "string",
-			"required": true,
-			"description": "URL (https://...) or local file path (.mp4, .m4a, .ogg, .wav, .webm, .mkv, .avi, .mov, .flac, .mp3)"
-		}
-	},
-	"flags": {
-		"--backend": {
-			"type": "string",
-			"enum": [
-				"local",
-				"openai",
-				"vercel"
-			],
-			"description": "Transcription backend. 'local' uses whisper-cli, 'openai' uses OpenAI API (requires OPENAI_API_KEY), 'vercel' uses Vercel AI Gateway (requires AI_GATEWAY_API_KEY)"
-		},
-		"--language": {
-			"type": "string",
-			"default": "auto",
-			"description": "ISO 639-1 language code or 'auto' for auto-detection"
-		},
-		"--model": {
-			"type": "string",
-			"description": "Override model. Local: tiny, base, small, medium, large, large-v3-turbo. OpenAI: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1. Vercel: creator/model-name, e.g. openai/whisper-1"
-		},
-		"--output": {
-			"type": "string",
-			"enum": [
-				"json",
-				"table",
-				"auto"
-			],
-			"default": "auto",
-			"description": "Output format. 'auto' uses 'table' for TTY, 'json' when piped"
-		},
-		"--fields": {
-			"type": "string",
-			"description": "Comma-separated fields to include: text, srt, metadata, files"
-		},
-		"--dry-run": {
-			"type": "boolean",
-			"default": false,
-			"description": "Validate input and show execution plan without transcribing"
-		},
-		"--json": {
-			"type": "string",
-			"description": "Raw JSON payload: {\"input\": \"...\", \"language\": \"...\", \"model\": \"...\", \"backend\": \"...\", \"cookiesFromBrowser\": \"chrome\"}"
-		},
-		"--output-dir": {
-			"type": "string",
-			"default": ".",
-			"description": "Directory for output files"
-		},
-		"--no-download": {
-			"type": "boolean",
-			"default": false,
-			"description": "Skip yt-dlp download step (input must be local file)"
-		},
-		"--no-clean": {
-			"type": "boolean",
-			"default": false,
-			"description": "Skip ffmpeg audio cleaning/normalization"
-		},
-		"--no-chunk": {
-			"type": "boolean",
-			"default": false,
-			"description": "Disable automatic chunking for oversized OpenAI and Vercel uploads"
-		},
-		"--cookies-from-browser": {
-			"type": "string",
-			"description": "Pass browser cookies to yt-dlp for Instagram/private URLs, e.g. chrome or chrome:Default"
-		}
-	},
-	"output": {
-		"success": "boolean",
-		"input": "string",
-		"backend": "string (local | openai | vercel)",
-		"files": {
-			"wav": "string (path)",
-			"srt": "string (path)",
-			"txt": "string (path)"
-		},
-		"metadata": {
-			"language": "string",
-			"model": "string"
-		},
-		"text": "string (full transcript)"
-	},
-	"examples": [
-		"trx transcribe recording.mp4 --output json",
-		"trx transcribe recording.mp4 --backend openai --output json",
-		"trx transcribe recording.mp4 -b vercel -m openai/whisper-1 --output json",
-		"trx transcribe recording.mp4 -b openai -m gpt-4o-mini-transcribe --output json",
-		"trx transcribe https://youtube.com/watch?v=abc --language es --output json",
-		"trx transcribe https://www.instagram.com/reel/... --cookies-from-browser chrome --output json",
-		"trx transcribe video.mp4 --fields text --output json",
-		"trx transcribe video.mp4 --dry-run --output json"
-	]
+  "command": "transcribe",
+  "description": "Transcribe audio/video from URL or local file using Whisper (local), OpenAI API, or Vercel AI Gateway",
+  "arguments": {
+    "input": {
+      "type": "string",
+      "required": true,
+      "description": "URL (https://...) or local file path (.mp4, .m4a, .ogg, .wav, .webm, .mkv, .avi, .mov, .flac, .mp3)"
+    }
+  },
+  "flags": {
+    "--backend": {
+      "type": "string",
+      "enum": [
+        "local",
+        "openai",
+        "vercel"
+      ],
+      "description": "Transcription backend. 'local' uses whisper-cli, 'openai' uses OpenAI API (requires OPENAI_API_KEY), 'vercel' uses Vercel AI Gateway (requires AI_GATEWAY_API_KEY)"
+    },
+    "--language": {
+      "type": "string",
+      "default": "auto",
+      "description": "ISO 639-1 language code or 'auto' for auto-detection"
+    },
+    "--model": {
+      "type": "string",
+      "description": "Override model. Local: tiny, base, small, medium, large, large-v3-turbo. OpenAI: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1. Vercel: creator/model-name, e.g. openai/whisper-1"
+    },
+    "--words": {
+      "type": "boolean",
+      "default": false,
+      "description": "Word-level timestamps in the SRT, one cue per word. Required by any consumer that clamps to word boundaries."
+    },
+    "--preset": {
+      "type": "string",
+      "enum": [
+        "verbatim"
+      ],
+      "description": "verbatim asks the model for a literal transcript, keeping fillers, hesitations and false starts that it drops by default. Needs --language, and covers the languages it has a prompt written for; any other language is an error naming the available ones, because a prompt in the wrong language steers the model worse than none."
+    },
+    "--prompt": {
+      "type": "string",
+      "description": "Initial prompt passed to the model, written in the language being spoken. Takes precedence over --preset."
+    },
+    "--output": {
+      "type": "string",
+      "enum": [
+        "json",
+        "table",
+        "auto"
+      ],
+      "default": "auto",
+      "description": "Output format for this command's own report. 'auto' uses 'table' for TTY, 'json' when piped. An unrecognised value is rejected rather than silently falling back. This does not control where files are written: see --output-dir."
+    },
+    "--fields": {
+      "type": "string",
+      "description": "Comma-separated fields to include: text, srt, metadata, files"
+    },
+    "--dry-run": {
+      "type": "boolean",
+      "default": false,
+      "description": "Validate input and show execution plan without transcribing"
+    },
+    "--json": {
+      "type": "string",
+      "description": "Raw JSON payload: {\"input\": \"...\", \"language\": \"...\", \"model\": \"...\", \"backend\": \"...\", \"cookiesFromBrowser\": \"chrome\"}"
+    },
+    "--output-dir": {
+      "type": "string",
+      "default": ".",
+      "description": "Directory for the generated files (.wav, .srt, .txt), created if missing. Not to be confused with --output, which selects the report format."
+    },
+    "--no-download": {
+      "type": "boolean",
+      "default": false,
+      "description": "Skip yt-dlp download step (input must be local file)"
+    },
+    "--no-clean": {
+      "type": "boolean",
+      "default": false,
+      "description": "Skip ffmpeg audio cleaning/normalization"
+    },
+    "--no-chunk": {
+      "type": "boolean",
+      "default": false,
+      "description": "Disable automatic chunking for oversized OpenAI and Vercel uploads"
+    },
+    "--cookies-from-browser": {
+      "type": "string",
+      "description": "Pass browser cookies to yt-dlp for Instagram/private URLs, e.g. chrome or chrome:Default"
+    }
+  },
+  "output": {
+    "success": "boolean",
+    "input": "string",
+    "backend": "string (local | openai | vercel)",
+    "files": {
+      "wav": "string (path)",
+      "srt": "string (path)",
+      "txt": "string (path)"
+    },
+    "metadata": {
+      "language": "string",
+      "model": "string"
+    },
+    "text": "string (full transcript)"
+  },
+  "examples": [
+    "trx transcribe recording.mp4 --output json",
+    "trx transcribe recording.mp4 --backend openai --output json",
+    "trx transcribe recording.mp4 -b vercel -m openai/whisper-1 --output json",
+    "trx transcribe recording.mp4 -b openai -m gpt-4o-mini-transcribe --output json",
+    "trx transcribe https://youtube.com/watch?v=abc --language es --output json",
+    "trx transcribe https://www.instagram.com/reel/... --cookies-from-browser chrome --output json",
+    "trx transcribe video.mp4 --fields text --output json",
+    "trx transcribe video.mp4 --dry-run --output json"
+  ]
 }

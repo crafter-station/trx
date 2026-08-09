@@ -129,7 +129,7 @@ After transcription, read the `.txt` output and apply corrections. Read [whisper
 3. **Technical terms**: Whisper misspells domain-specific words. Ask user for a glossary or infer from context.
 4. **Repeated phrases**: Whisper sometimes stutters on word boundaries. Remove exact consecutive duplicates.
 5. **Speaker attribution**: If user provides speaker names, insert `[Speaker Name]:` markers.
-6. **Filler words**: Remove "um", "uh", "este", "o sea" if user wants clean output.
+6. **Filler words**: Remove "um", "uh", "este", "o sea" if user wants clean output. **Ask first when the transcript feeds an edit** rather than a reader: a tool that cuts a recording finds those spans by reading them, so removing them here deletes the evidence it needs. `--preset verbatim` exists to keep them in the transcript for exactly that case.
 7. **Timestamp alignment**: If editing `.srt`, preserve the timestamp structure. Only modify text between timestamps.
 
 ### 4. Schema introspection
@@ -208,6 +208,8 @@ Full response includes `text`, `files`, `metadata`, `input`, `backend`.
 | `-l, --language <code>` | ISO 639-1 language code | `auto` (from config) |
 | `-m, --model <size>` | Override model: a local model, an OpenAI model, or `creator/model-name` for Vercel | from config |
 | `-w, --words` | Word-level timestamps in SRT | false |
+| `--preset <name>` | `verbatim` keeps fillers and false starts; needs `--language` | none |
+| `--prompt <text>` | Initial prompt in the spoken language; beats `--preset` | none |
 | `--output-dir <dir>` | Output directory, created if missing | `.` (cwd) |
 | `-o, --output <format>` | `json`, `table`, or `auto`. Global flag, goes before the subcommand | auto (TTY=table, piped=json) |
 | `--fields <list>` | Limit output: text,srt,metadata,files (comma-separated) | all |
