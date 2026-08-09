@@ -689,9 +689,7 @@ describe("buildWhisperArgs", () => {
 
 	test("leaves the flag off when cues are sentence-level", () => {
 		const sentences = { ...config, wordTimestamps: false };
-		expect(buildWhisperArgs(sentences as never, "/tmp/a.wav", "es")).not.toContain(
-			"--split-on-word",
-		);
+		expect(buildWhisperArgs(sentences as never, "/tmp/a.wav", "es")).not.toContain("--split-on-word");
 	});
 
 	test("still caps the cue length, since the split flag alone does not", () => {
