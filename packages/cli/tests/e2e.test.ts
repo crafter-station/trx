@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { stitchSrt } from "../src/core/chunk.ts";
+import { buildWhisperArgs } from "../src/core/whisper.ts";
 
 const CLI = resolve(import.meta.dir, "../bin/trx.ts");
 
@@ -663,5 +664,42 @@ describe("trx skills", () => {
 		});
 		expect(exitCode).toBe(1);
 		expect((parseJSON(stdout) as { error: string }).error).toContain("TRX_SKILLS_DIR");
+	});
+});
+
+describe("buildWhisperArgs", () => {
+	const config = {
+		modelPath: "/models/ggml-large-v3-turbo.bin",
+		threads: 4,
+		language: "es",
+		wordTimestamps: true,
+		whisperFlags: {
+			suppressNst: false,
+			noFallback: false,
+			maxContext: 64,
+			entropyThold: 2.4,
+			logprobThold: -1,
+		},
+	};
+
+	test("splits on words, not tokens, when word timestamps are asked for", () => {
+		// --max-len 1 alone caps a cue at one token, so a multi-token word arrives split.
+		expect(buildWhisperArgs(config as never, "/tmp/a.wav", "es")).toContain("--split-on-word");
+	});
+
+	test("leaves the flag off when cues are sentence-level", () => {
+		const sentences = { ...config, wordTimestamps: false };
+		expect(buildWhisperArgs(sentences as never, "/tmp/a.wav", "es")).not.toContain(
+			"--split-on-word",
+		);
+	});
+
+	test("still caps the cue length, since the split flag alone does not", () => {
+		const args = buildWhisperArgs(config as never, "/tmp/a.wav", "es");
+		expect(args[args.indexOf("--max-len") + 1]).toBe("1");
+	});
+
+	test("omits the language flag when detection is automatic", () => {
+		expect(buildWhisperArgs(config as never, "/tmp/a.wav", "auto")).not.toContain("--language");
 	});
 });

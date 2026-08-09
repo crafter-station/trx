@@ -12,17 +12,7 @@ export interface WhisperResult {
 	text: string;
 }
 
-export async function transcribe(
-	wavPath: string,
-	config: TrxConfig,
-	languageOverride?: string,
-	onProgress?: (progress: WhisperProgress) => void,
-): Promise<WhisperResult> {
-	if (!existsSync(config.modelPath)) {
-		throw new Error(`Whisper model not found: ${config.modelPath}\nRun "trx init" to download a model.`);
-	}
-
-	const language = languageOverride || config.language;
+export function buildWhisperArgs(config: WhisperConfig, wavPath: string, language: string): string[] {
 	const args = [
 		"whisper-cli",
 		"-m",
@@ -36,6 +26,16 @@ export async function transcribe(
 		"--output-srt",
 	];
 
+	// --max-len 1 caps a cue at one token, not one word, so without this a multi-token word
+	// arrives split: "Crafter" as "Cra" + "fter". The result still looks word-level, since
+	// every cue holds one token and no spaces, which is what makes the omission expensive:
+	// anything matching on word text silently misses the fragments and nothing reports it.
+	// Measured on 91s of Spanish with large-v3-turbo: 26% of cues were fragments without this
+	// flag, 0% with it.
+	if (config.wordTimestamps) {
+		args.push("--split-on-word");
+	}
+
 	if (language !== "auto") {
 		args.push("--language", language);
 	}
@@ -46,6 +46,22 @@ export async function transcribe(
 	args.push("--max-context", String(flags.maxContext));
 	args.push("--entropy-thold", String(flags.entropyThold));
 	args.push("--logprob-thold", String(flags.logprobThold));
+
+	return args;
+}
+
+export async function transcribe(
+	wavPath: string,
+	config: TrxConfig,
+	languageOverride?: string,
+	onProgress?: (progress: WhisperProgress) => void,
+): Promise<WhisperResult> {
+	if (!existsSync(config.modelPath)) {
+		throw new Error(`Whisper model not found: ${config.modelPath}\nRun "trx init" to download a model.`);
+	}
+
+	const language = languageOverride || config.language;
+	const args = buildWhisperArgs(config, wavPath, language);
 
 	if (onProgress) {
 		args.push("--print-progress");
