@@ -199,6 +199,23 @@ export function validateBackend(backend: string): "local" | "openai" | "vercel" 
 	return cleaned;
 }
 
+/**
+ * An unknown format used to fall through to JSON with exit 0, so a caller that asked for
+ * something this does not have got output anyway and nothing said the request was dropped.
+ * That silence is reachable by accident: `--output` is one hyphen away from `--output-dir`,
+ * so a path handed to the wrong flag was accepted as a format and discarded, which reads
+ * from outside like the directory flag being ignored.
+ */
+export function validateOutputFormat(format: string): "json" | "table" | "auto" {
+	const cleaned = format.trim().toLowerCase();
+	if (cleaned !== "json" && cleaned !== "table" && cleaned !== "auto") {
+		throw new Error(
+			`Unknown output format: "${format}". Available: json, table, auto. To choose where files are written, use --output-dir.`,
+		);
+	}
+	return cleaned;
+}
+
 export function validateVercelModel(model: string): string {
 	const cleaned = rejectControlChars(model.trim());
 	if (!/^[\w.-]+\/[\w.-]+$/.test(cleaned)) {

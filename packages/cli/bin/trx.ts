@@ -6,6 +6,8 @@ import { createModelsCommand } from "../src/commands/models.ts";
 import { createSchemaCommand } from "../src/commands/schema.ts";
 import { createSkillsCommand } from "../src/commands/skills.ts";
 import { createTranscribeCommand } from "../src/commands/transcribe.ts";
+import { outputError } from "../src/utils/output.ts";
+import { validateOutputFormat } from "../src/validation/input.ts";
 
 const program = new Command();
 
@@ -18,6 +20,17 @@ program
 	.option("-o, --output <format>", "output format (json, table, auto)", "auto")
 	.hook("preAction", (thisCommand) => {
 		const opts = thisCommand.opts();
+		// Before resolving "auto", so an unknown format is rejected rather than quietly
+		// becoming JSON. One entry point for every subcommand, since they all read this
+		// same option through optsWithGlobals().
+		try {
+			opts.output = validateOutputFormat(String(opts.output));
+		} catch (error) {
+			// The requested format is the invalid one, so the complaint goes out in the
+			// shape the caller would have got by default rather than in the one it asked
+			// for and cannot have.
+			outputError(error instanceof Error ? error.message : String(error), process.stdout.isTTY ? "table" : "json");
+		}
 		if (opts.output === "auto") {
 			opts.output = process.stdout.isTTY ? "table" : "json";
 		}

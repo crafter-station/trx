@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { stitchSrt } from "../src/core/chunk.ts";
 import { presetLanguages, presetPrompt } from "../src/core/prompts.ts";
 import { buildWhisperArgs } from "../src/core/whisper.ts";
+import { validateOutputFormat } from "../src/validation/input.ts";
 
 const CLI = resolve(import.meta.dir, "../bin/trx.ts");
 
@@ -733,5 +734,29 @@ describe("verbatim preset", () => {
 		const languages = presetLanguages();
 		expect(languages).toContain("es");
 		expect(languages).not.toContain("ja");
+	});
+});
+
+describe("validateOutputFormat", () => {
+	test("accepts the formats it documents", () => {
+		expect(validateOutputFormat("json")).toBe("json");
+		expect(validateOutputFormat("table")).toBe("table");
+		expect(validateOutputFormat("auto")).toBe("auto");
+	});
+
+	test("is forgiving about case and stray whitespace", () => {
+		expect(validateOutputFormat("  JSON ")).toBe("json");
+	});
+
+	// An unknown format used to fall through to JSON with exit 0, so a caller that asked for
+	// something unavailable got output anyway and nothing said the request was dropped.
+	test("rejects an unknown format instead of quietly emitting JSON", () => {
+		expect(() => validateOutputFormat("basura")).toThrow(/Unknown output format/);
+	});
+
+	// --output and --output-dir are one hyphen apart, and handing a path to the format flag
+	// used to look from outside like the directory flag being ignored.
+	test("points a misdirected path at the flag that takes one", () => {
+		expect(() => validateOutputFormat("/tmp/somewhere")).toThrow(/--output-dir/);
 	});
 });
