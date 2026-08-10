@@ -42,12 +42,14 @@ Global option (all commands): `-o, --output <format>` with `json`, `table`, or `
 |------|-------------|
 | `-l, --language <lang>` | Force language (ISO 639-1), default auto-detect |
 | `-m, --model <size>` | Override model. Local: `tiny`/`base`/`small`/`medium`/`large`/`large-v3-turbo`. OpenAI: `gpt-4o-transcribe`/`gpt-4o-mini-transcribe`/`whisper-1` |
-| `-b, --backend <backend>` | `local` or `openai` |
+| `-b, --backend <backend>` | `local`, `openai`, or `vercel` |
 | `--fields <fields>` | Limit output fields: `text`, `srt`, `metadata`, `files` |
 | `--dry-run` | Validate input and show plan without transcribing |
 | `--json <payload>` | Raw JSON input for agents |
 | `--output-dir <dir>` | Where to write `.wav`/`.srt`/`.txt` (default `.`) |
 | `-w, --words` | Word-level timestamps in the SRT |
+| `--preset <name>` | `verbatim` keeps fillers and false starts; needs `--language` |
+| `--prompt <text>` | Initial prompt in the spoken language; takes precedence over `--preset` |
 | `--no-download` | Skip yt-dlp, input must be a local file |
 | `--no-clean` | Skip ffmpeg audio cleaning |
 

@@ -88,7 +88,7 @@ Input (URL or file)
 [yt-dlp] Download media (if URL)
   |
   v
-[ffmpeg] Clean audio (silence removal, noise reduction, normalization)
+[ffmpeg] Clean audio (noise reduction, normalization; duration preserved)
   |
   v
 [whisper-cli] Transcribe (local Whisper model)

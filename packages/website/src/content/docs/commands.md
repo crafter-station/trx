@@ -84,6 +84,35 @@ trx video.mp4 --output json --fields text
 trx video.mp4 --dry-run --output json
 ```
 
+### Reading the result
+
+```json
+"metadata": {
+  "language": "es",
+  "model": "large-v3-turbo",
+  "inputDurationMs": 90538,
+  "transcribedDurationMs": 90539,
+  "lastCueEndMs": 89120
+}
+```
+
+Three durations, no verdict. The gaps say different things:
+
+- **`inputDurationMs` against `transcribedDurationMs`** is what the cleaning stage changed. They should be within a millisecond of each other. A large gap means the timeline was rewritten and the timestamps do not describe the file you passed in.
+- **`transcribedDurationMs` against `lastCueEndMs`** is audio that produced no words: trailing silence, or a transcription that stopped early.
+
+A short transcript reads the same whether the recording is mostly silence, the model stopped early, or the file handed in was not the one intended. These separate those cases.
+
+### Verbatim transcripts
+
+A transcriber cleans by default, dropping hesitations and false starts as noise. That is right for captions and wrong when the transcript drives an edit, because those spans are exactly the ones worth cutting.
+
+```bash
+trx transcribe video.mp4 --words --language es --preset verbatim
+```
+
+Measured on one recording: the preset recovers `Ok.` and `Eh,` where the unprompted run drops both. The prompt has to be written in the language being spoken, so the preset needs `--language` and covers `de`, `en`, `es`, `fr`, `it`, `pt`. Any other language is an error naming what is available, because a prompt in the wrong language steers the model worse than none. `--prompt "<text>"` writes your own.
+
 ---
 
 ## trx models

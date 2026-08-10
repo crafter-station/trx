@@ -66,9 +66,10 @@ languages it has a prompt for (`de`, `en`, `es`, `fr`, `it`, `pt`). Any other la
 error naming what is available rather than a prompt in the wrong language, which steers the
 model worse than none. Use `--prompt "<text>"` to write your own.
 
-> Known limitation: the transcription path currently removes silence before transcribing,
-> which deletes the pauses these hesitations live around, so the preset has little to work
-> with today. See [#35](https://github.com/crafter-station/trx/issues/35).
+Timestamps describe the file you handed in. The cleaning stage adjusts level and noise and
+leaves duration alone, so a cue at 36.68s means 36.68s in the source. Up to 0.8.0 it also
+removed silence, which moved every cue after the first removed pause: 1.572s of accumulated
+drift on one 90.5s recording.
 
 ## Commands
 
@@ -108,7 +109,7 @@ Input (URL or file)
 [yt-dlp] Download media (if URL)
   |
   v
-[ffmpeg] Clean audio (silence removal, noise reduction, normalization)
+[ffmpeg] Clean audio (noise reduction, normalization; duration preserved)
   |
   v
 [whisper-cli] Transcribe (local Whisper model)
