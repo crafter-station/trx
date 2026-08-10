@@ -1,66 +1,66 @@
 {
-	"command": "init",
-	"description": "Install dependencies and configure transcription backend (local whisper-cli, OpenAI API, or Vercel AI Gateway)",
-	"flags": {
-		"--backend": {
-			"type": "string",
-			"enum": [
-				"local",
-				"openai",
-				"vercel"
-			],
-			"default": "local",
-			"description": "Transcription backend. 'openai' and 'vercel' skip whisper-cli install; 'openai' requires OPENAI_API_KEY, 'vercel' requires AI_GATEWAY_API_KEY"
-		},
-		"--model": {
-			"type": "string",
-			"default": "small",
-			"description": "Model to use. Local: tiny, base, small, medium, large, large-v3-turbo. OpenAI: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1. Vercel: creator/model-name, e.g. openai/whisper-1"
-		},
-		"--language": {
-			"type": "string",
-			"default": "auto",
-			"description": "Default language for transcription (ISO 639-1 code or 'auto')"
-		},
-		"--output": {
-			"type": "string",
-			"enum": [
-				"json",
-				"table",
-				"auto"
-			],
-			"default": "auto",
-			"description": "Output format"
-		}
-	},
-	"dependencies": {
-		"whisper-cli": {
-			"install": "brew install whisper-cpp",
-			"purpose": "Local speech-to-text transcription engine (not needed for openai or vercel backends)"
-		},
-		"yt-dlp": {
-			"install": "brew install yt-dlp",
-			"purpose": "Download video/audio from URLs (YouTube, Twitter, etc.)"
-		},
-		"ffmpeg": {
-			"install": "brew install ffmpeg",
-			"purpose": "Audio cleaning, conversion, silence removal, noise reduction"
-		}
-	},
-	"output": {
-		"success": "boolean",
-		"backend": "string (local | openai | vercel)",
-		"model": "string",
-		"language": "string",
-		"modelPath": "string (local only)",
-		"config": "TrxConfig object"
-	},
-	"examples": [
-		"trx init",
-		"trx init --backend openai",
-		"trx init --backend openai --model gpt-4o-mini-transcribe",
-		"trx init --backend vercel --model openai/whisper-1",
-		"trx init --model large-v3-turbo --language es",
-		"trx init --model large --output json"
-	]
+  "command": "init",
+  "description": "Install dependencies and configure transcription backend (local whisper-cli, OpenAI API, or Vercel AI Gateway)",
+  "flags": {
+    "--backend": {
+      "type": "string",
+      "enum": [
+        "local",
+        "openai",
+        "vercel"
+      ],
+      "default": "local",
+      "description": "Transcription backend. 'openai' and 'vercel' skip whisper-cli install; 'openai' requires OPENAI_API_KEY, 'vercel' requires AI_GATEWAY_API_KEY"
+    },
+    "--model": {
+      "type": "string",
+      "default": "small",
+      "description": "Model to use. Local: tiny, base, small, medium, large, large-v3-turbo. OpenAI: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1. Vercel: creator/model-name, e.g. openai/whisper-1"
+    },
+    "--language": {
+      "type": "string",
+      "default": "auto",
+      "description": "Default language for transcription (ISO 639-1 code or 'auto')"
+    },
+    "--output": {
+      "type": "string",
+      "enum": [
+        "json",
+        "table",
+        "auto"
+      ],
+      "default": "auto",
+      "description": "Output format"
+    }
+  },
+  "dependencies": {
+    "whisper-cli": {
+      "install": "brew install whisper-cpp",
+      "purpose": "Local speech-to-text transcription engine (not needed for openai or vercel backends)"
+    },
+    "yt-dlp": {
+      "install": "brew install yt-dlp",
+      "purpose": "Download video/audio from URLs (YouTube, Twitter, etc.)"
+    },
+    "ffmpeg": {
+      "install": "brew install ffmpeg",
+      "purpose": "Audio cleaning, conversion, noise reduction and normalization. Duration is preserved so transcript timestamps match the input"
+    }
+  },
+  "output": {
+    "success": "boolean",
+    "backend": "string (local | openai | vercel)",
+    "model": "string",
+    "language": "string",
+    "modelPath": "string (local only)",
+    "config": "TrxConfig object"
+  },
+  "examples": [
+    "trx init",
+    "trx init --backend openai",
+    "trx init --backend openai --model gpt-4o-mini-transcribe",
+    "trx init --backend vercel --model openai/whisper-1",
+    "trx init --model large-v3-turbo --language es",
+    "trx init --model large --output json"
+  ]
 }

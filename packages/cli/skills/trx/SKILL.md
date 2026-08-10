@@ -193,12 +193,28 @@ Example JSON response (filtered with `--fields text`):
   },
   "metadata": {
     "language": "es",
-    "model": "small"
+    "model": "small",
+    "inputDurationMs": 90538,
+    "transcribedDurationMs": 90539,
+    "lastCueEndMs": 89120
   }
 }
 ```
 
 Full response includes `text`, `files`, `metadata`, `input`, `backend`.
+
+**Read the three durations before trusting a short transcript.** They are numbers, not a
+verdict, and the gaps between them say different things:
+
+- `inputDurationMs` against `transcribedDurationMs` is what the cleaning stage changed. They
+  should now be within a millisecond of each other; a large gap means the timeline was
+  rewritten and the timestamps do not describe the file you passed in.
+- `transcribedDurationMs` against `lastCueEndMs` is audio that produced no words. A big gap
+  is trailing silence, or a transcription that stopped early.
+
+A five-cue transcript reads identically whether the recording is mostly silence, the model
+stopped early, or the file handed in was not the one intended. These separate those cases,
+and checking them is faster than filing a bug.
 
 ## Flags reference
 
