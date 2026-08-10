@@ -102,7 +102,10 @@
     },
     "metadata": {
       "language": "string",
-      "model": "string"
+      "model": "string",
+      "inputDurationMs": "integer|null, how long the file handed in ran",
+      "transcribedDurationMs": "integer|null, how long the audio that reached the model ran. A large gap from inputDurationMs means the timeline was rewritten",
+      "lastCueEndMs": "integer|null, where the last cue ends. The gap to transcribedDurationMs is audio that produced no words"
     },
     "text": "string (full transcript)"
   },

@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
+import { lastCueEndMs } from "../src/core/audio.ts";
 import { stitchSrt } from "../src/core/chunk.ts";
 import { presetLanguages, presetPrompt } from "../src/core/prompts.ts";
 import { buildWhisperArgs } from "../src/core/whisper.ts";
@@ -704,6 +705,32 @@ describe("buildWhisperArgs", () => {
 		expect(args[args.indexOf("--prompt") + 1]).toBe("Transcripción literal.");
 	});
 
+	// An initial prompt is text context, so --max-context 0 discards it and the run comes
+	// back identical to one with no prompt. The default is 0 to stop the model carrying its
+	// own hallucinations between windows; a prompt needs room to sit in.
+	test("makes room for a prompt when the config leaves no context", () => {
+		const noContext = { ...config, whisperFlags: { ...config.whisperFlags, maxContext: 0 } };
+		const args = buildWhisperArgs(noContext as never, "/tmp/a.wav", "es", "literal");
+		expect(args[args.indexOf("--max-context") + 1]).toBe("64");
+	});
+
+	test("leaves a configured context alone", () => {
+		const args = buildWhisperArgs(config as never, "/tmp/a.wav", "es", "literal");
+		expect(args[args.indexOf("--max-context") + 1]).toBe("64");
+		const wide = { ...config, whisperFlags: { ...config.whisperFlags, maxContext: 128 } };
+		expect(
+			buildWhisperArgs(wide as never, "/tmp/a.wav", "es", "literal")[
+				buildWhisperArgs(wide as never, "/tmp/a.wav", "es", "literal").indexOf("--max-context") + 1
+			],
+		).toBe("128");
+	});
+
+	test("keeps max-context at zero when no prompt was given", () => {
+		const noContext = { ...config, whisperFlags: { ...config.whisperFlags, maxContext: 0 } };
+		const args = buildWhisperArgs(noContext as never, "/tmp/a.wav", "es");
+		expect(args[args.indexOf("--max-context") + 1]).toBe("0");
+	});
+
 	test("adds no prompt flag when there is none, so old invocations are unchanged", () => {
 		expect(buildWhisperArgs(config as never, "/tmp/a.wav", "es")).not.toContain("--prompt");
 		expect(buildWhisperArgs(config as never, "/tmp/a.wav", "es", null)).not.toContain("--prompt");
@@ -766,5 +793,29 @@ describe("validateOutputFormat", () => {
 	// noise to the frequent case to serve the rare one.
 	test("keeps the directory hint out of a plain typo", () => {
 		expect(() => validateOutputFormat("jsonn")).toThrow(/Available: json, table, auto\.$/);
+	});
+});
+
+describe("lastCueEndMs", () => {
+	test("reports where the last cue ends, not the first", () => {
+		const srt = "1\n00:00:01,000 --> 00:00:02,500\nhola\n\n2\n00:00:03,000 --> 00:00:04,250\nmundo\n";
+		expect(lastCueEndMs(srt)).toBe(4250);
+	});
+
+	test("reads hours past the first", () => {
+		expect(lastCueEndMs("1\n01:02:03,456 --> 01:02:04,500\nx\n")).toBe(3_724_500);
+	});
+
+	// The gap between this and the audio duration is what separates "mostly silence" from
+	// "the transcription stopped early", so an empty transcript has to be reportable rather
+	// than collapse to zero.
+	test("returns null for a transcript with no cues", () => {
+		expect(lastCueEndMs("")).toBeNull();
+		expect(lastCueEndMs("not an srt at all")).toBeNull();
+	});
+
+	test("survives cues that arrive out of order", () => {
+		const srt = "1\n00:00:09,000 --> 00:00:10,000\nb\n\n2\n00:00:01,000 --> 00:00:02,000\na\n";
+		expect(lastCueEndMs(srt)).toBe(10_000);
 	});
 });
