@@ -1,7 +1,7 @@
 import { mkdir } from "node:fs/promises";
 import { basename, resolve } from "node:path";
 import type { Backend, TrxConfig } from "../utils/config.ts";
-import { cleanAudio } from "./audio.ts";
+import { cleanAudio, durationMs, lastCueEndMs } from "./audio.ts";
 import { downloadMedia } from "./download.ts";
 import { transcribeOpenAI } from "./openai.ts";
 import { transcribeVercel } from "./vercel.ts";
@@ -36,8 +36,40 @@ export interface PipelineResult {
 	metadata: {
 		language: string;
 		model: string;
+		/** How long the file handed in ran, in milliseconds. Null when it could not be read. */
+		inputDurationMs: number | null;
+		/** How long the audio that reached the model ran. */
+		transcribedDurationMs: number | null;
+		/** Where the last cue ends. The gap to transcribedDurationMs is audio that produced no words. */
+		lastCueEndMs: number | null;
 	};
 	text: string;
+}
+
+/**
+ * Three numbers rather than a verdict. A short transcript reads the same whether the
+ * recording is mostly silence, the model stopped early, or the file handed in was not the one
+ * intended; the gaps between these separate those cases. The caller decides what is suspicious
+ * for its own material, which beats a threshold picked here.
+ */
+async function coverage(
+	inputFile: string,
+	audioInput: string,
+	srtPath: string,
+): Promise<{
+	inputDurationMs: number | null;
+	transcribedDurationMs: number | null;
+	lastCueEndMs: number | null;
+}> {
+	return {
+		inputDurationMs: await durationMs(inputFile),
+		transcribedDurationMs: await durationMs(audioInput),
+		lastCueEndMs: lastCueEndMs(
+			await Bun.file(srtPath)
+				.text()
+				.catch(() => ""),
+		),
+	};
 }
 
 export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult> {
@@ -88,6 +120,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 			metadata: {
 				language: opts.language || "auto",
 				model,
+				...(await coverage(inputFile, audioInput, result.srtPath)),
 			},
 			text: result.text,
 		};
@@ -113,6 +146,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 			metadata: {
 				language: opts.language || "auto",
 				model,
+				...(await coverage(inputFile, audioInput, result.srtPath)),
 			},
 			text: result.text,
 		};
@@ -133,6 +167,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 		metadata: {
 			language: opts.language || "auto",
 			model: config.modelSize,
+			...(await coverage(inputFile, audioInput, result.srtPath)),
 		},
 		text: result.text,
 	};
