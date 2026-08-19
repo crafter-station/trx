@@ -7,10 +7,13 @@ import { readConfig } from "../utils/config.ts";
 import { type OutputFormat, output, outputError } from "../utils/output.ts";
 import {
 	validateBackend,
+	validateElevenLabsLanguage,
+	validateElevenLabsModel,
 	validateInput,
 	validateLanguage,
 	validateModel,
 	validateOpenAIModel,
+	validateSpeakers,
 	validateVercelModel,
 } from "../validation/input.ts";
 
@@ -43,7 +46,9 @@ export function createTranscribeCommand(): Command {
 		.option("-w, --words", "word-level timestamps in SRT")
 		.option("--preset <name>", "verbatim: keep fillers, hesitations and false starts")
 		.option("--prompt <text>", "initial prompt passed to the model, in the spoken language")
-		.option("-b, --backend <backend>", "transcription backend (local, openai, vercel)")
+		.option("-b, --backend <backend>", "transcription backend (local, openai, vercel, elevenlabs)")
+		.option("--diarize", "label each cue with its speaker (elevenlabs backend)")
+		.option("--speakers <n>", "how many speakers to expect, 1-32 (elevenlabs backend, implies --diarize)")
 		.option("--no-download", "skip yt-dlp (input must be local)")
 		.option("--no-clean", "skip ffmpeg audio cleaning")
 		.option("--no-chunk", "disable automatic chunking for oversized cloud uploads")
@@ -64,6 +69,8 @@ export function createTranscribeCommand(): Command {
 				let modelOverride = opts.model;
 				let backendOverride = opts.backend;
 				let cookiesFromBrowser = opts.cookiesFromBrowser;
+				let diarizeOverride: boolean | undefined = opts.diarize ? true : undefined;
+				let speakersOverride = opts.speakers;
 
 				if (opts.json) {
 					const payload = JSON.parse(opts.json);
@@ -72,31 +79,59 @@ export function createTranscribeCommand(): Command {
 					modelOverride = payload.model || modelOverride;
 					backendOverride = payload.backend || backendOverride;
 					cookiesFromBrowser = payload.cookiesFromBrowser || payload.cookies_from_browser || cookiesFromBrowser;
+					if (payload.diarize !== undefined) diarizeOverride = payload.diarize === true;
+					if (payload.speakers !== undefined) speakersOverride = payload.speakers;
+					if (payload.numSpeakers !== undefined) speakersOverride = payload.numSpeakers;
 				} else {
 					parsedInput = validateInput(inputArg);
 				}
 
-				if (language) validateLanguage(language);
 				const effectiveBackend = backendOverride ? validateBackend(backendOverride) : config.backend;
+				// Resolved after the backend, because the set of accepted codes depends on it:
+				// whisper takes ISO 639-1, Scribe also takes ISO 639-3.
+				if (language) {
+					language =
+						effectiveBackend === "elevenlabs" ? validateElevenLabsLanguage(language) : validateLanguage(language);
+				}
 				if (modelOverride) {
 					if (effectiveBackend === "openai") {
 						validateOpenAIModel(modelOverride);
 					} else if (effectiveBackend === "vercel") {
 						validateVercelModel(modelOverride);
+					} else if (effectiveBackend === "elevenlabs") {
+						validateElevenLabsModel(modelOverride);
 					} else {
 						validateModel(modelOverride);
 					}
 				}
 
+				// Only one backend separates speakers. Accepting these flags elsewhere would
+				// return an undiarized transcript that looks like the request was honored, so
+				// they are rejected where they cannot be applied rather than dropped.
+				const numSpeakers = speakersOverride !== undefined ? validateSpeakers(String(speakersOverride)) : undefined;
+				if ((diarizeOverride || numSpeakers !== undefined) && effectiveBackend !== "elevenlabs") {
+					throw new Error(
+						`--diarize and --speakers need --backend elevenlabs, got "${effectiveBackend}". No other backend returns speaker labels.`,
+					);
+				}
+				// Naming a speaker count is a request to separate speakers; the API only returns
+				// labels when diarization is on, so asking for one without the other is a no-op.
+				const diarize = numSpeakers !== undefined ? true : diarizeOverride;
+
 				const outputDir = resolve(opts.outputDir);
 
 				if (opts.dryRun) {
+					const effectiveDiarize = diarize ?? config.elevenlabs.diarize;
 					const transcribeStep =
 						effectiveBackend === "openai"
 							? `transcribe via OpenAI ${modelOverride || config.openai.model}`
 							: effectiveBackend === "vercel"
 								? `transcribe via Vercel AI Gateway ${modelOverride || config.vercel.model}`
-								: "transcribe via whisper-cli";
+								: effectiveBackend === "elevenlabs"
+									? `transcribe via ElevenLabs ${modelOverride || config.elevenlabs.model}${
+											effectiveDiarize ? " (diarized)" : ""
+										}`
+									: "transcribe via whisper-cli";
 					const downloadStep = cookiesFromBrowser
 						? `download via yt-dlp with ${cookiesFromBrowser} cookies`
 						: "download via yt-dlp";
@@ -108,12 +143,17 @@ export function createTranscribeCommand(): Command {
 							backend: effectiveBackend,
 							cookiesFromBrowser,
 							language: language || "auto",
+							...(effectiveBackend === "elevenlabs"
+								? { diarize: effectiveDiarize, ...(numSpeakers !== undefined ? { speakers: numSpeakers } : {}) }
+								: {}),
 							model:
 								effectiveBackend === "openai"
 									? modelOverride || config.openai.model
 									: effectiveBackend === "vercel"
 										? modelOverride || config.vercel.model
-										: modelOverride || config.modelSize,
+										: effectiveBackend === "elevenlabs"
+											? modelOverride || config.elevenlabs.model
+											: modelOverride || config.modelSize,
 							outputDir,
 							steps: [
 								...(parsedInput.type === "url" && opts.download !== false ? [downloadStep] : []),
@@ -137,6 +177,11 @@ export function createTranscribeCommand(): Command {
 					effectiveConfig.openai = { ...config.openai, model: modelOverride as typeof config.openai.model };
 				} else if (effectiveBackend === "vercel" && modelOverride) {
 					effectiveConfig.vercel = { ...config.vercel, model: modelOverride };
+				} else if (effectiveBackend === "elevenlabs" && modelOverride) {
+					effectiveConfig.elevenlabs = {
+						...config.elevenlabs,
+						model: modelOverride as typeof config.elevenlabs.model,
+					};
 				} else if (modelOverride) {
 					effectiveConfig.modelSize = modelOverride;
 					effectiveConfig.modelPath = config.modelPath.replace(/ggml-[\w.-]+\.bin/, `ggml-${modelOverride}.bin`);
@@ -176,6 +221,8 @@ export function createTranscribeCommand(): Command {
 					noDownload: opts.download === false,
 					noClean: opts.clean === false,
 					noChunk: opts.chunk === false,
+					diarize,
+					numSpeakers,
 					cookiesFromBrowser,
 					prompt,
 					onStep: (step) => {

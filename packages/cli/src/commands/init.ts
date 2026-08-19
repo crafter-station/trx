@@ -3,11 +3,13 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as p from "@clack/prompts";
 import { Command } from "commander";
+import { getElevenLabsKey } from "../core/elevenlabs.ts";
 import { type Backend, defaultConfig, ensureTrxDir, getModelsDir, writeConfig } from "../utils/config.ts";
 import { type OutputFormat, output, outputError } from "../utils/output.ts";
 import { spawn, spawnOrThrow } from "../utils/spawn.ts";
 import {
 	validateBackend,
+	validateElevenLabsModel,
 	validateLanguage,
 	validateModel,
 	validateOpenAIModel,
@@ -27,6 +29,11 @@ const OPENAI_MODELS = [
 	{ value: "gpt-4o-transcribe", label: "gpt-4o-transcribe", hint: "best accuracy ($2.50/hr)" },
 	{ value: "gpt-4o-mini-transcribe", label: "gpt-4o-mini-transcribe", hint: "fastest, cheapest ($0.60/hr)" },
 	{ value: "whisper-1", label: "whisper-1", hint: "legacy ($0.36/hr)" },
+];
+
+const ELEVENLABS_MODELS = [
+	{ value: "scribe_v2", label: "scribe_v2", hint: "latest, diarization + word timestamps" },
+	{ value: "scribe_v1", label: "scribe_v1", hint: "previous generation" },
 ];
 
 const HF_BASE = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
@@ -389,6 +396,11 @@ export function createInitCommand(): Command {
 							{ value: "local", label: "Local (whisper.cpp)", hint: "free, private, offline" },
 							{ value: "openai", label: "OpenAI API", hint: "fast, requires API key" },
 							{ value: "vercel", label: "Vercel AI Gateway", hint: "any provider, requires AI_GATEWAY_API_KEY" },
+							{
+								value: "elevenlabs",
+								label: "ElevenLabs Scribe",
+								hint: "speaker diarization, requires ELEVENLABS_API_KEY",
+							},
 						],
 						initialValue: "local",
 					});
@@ -397,6 +409,86 @@ export function createInitCommand(): Command {
 						process.exit(0);
 					}
 					selectedBackend = choice as Backend;
+				}
+
+				if (selectedBackend === "elevenlabs") {
+					// Resolved through the same path the transcribe run uses, so init cannot pass on a
+					// key that later turns out to be unreachable.
+					const hasKey = await getElevenLabsKey().then(
+						() => true,
+						() => false,
+					);
+					if (!hasKey) {
+						outputError(
+							"ELEVENLABS_API_KEY not set. Get one at https://elevenlabs.io/app/settings/api-keys and export it: export ELEVENLABS_API_KEY=...",
+							format,
+						);
+						return;
+					}
+					if (isTTY) p.log.success("ELEVENLABS_API_KEY detected");
+
+					let selectedModel = "scribe_v2";
+					if (isTTY && !cmd.getOptionValueSource("model")) {
+						const choice = await p.select({
+							message: "Select Scribe model:",
+							options: ELEVENLABS_MODELS,
+							initialValue: "scribe_v2",
+						});
+						if (p.isCancel(choice)) {
+							p.cancel("Init cancelled");
+							process.exit(0);
+						}
+						selectedModel = choice as string;
+					} else if (cmd.getOptionValueSource("model")) {
+						selectedModel = validateElevenLabsModel(opts.model);
+					}
+
+					let diarize = false;
+					if (isTTY) {
+						const answer = await p.confirm({
+							message: "Separate speakers by default? (diarization)",
+							initialValue: false,
+						});
+						if (p.isCancel(answer)) {
+							p.cancel("Init cancelled");
+							process.exit(0);
+						}
+						diarize = answer === true;
+					}
+
+					if (isTTY) p.log.step("Checking ffmpeg + yt-dlp (still needed for download/clean)...");
+					const hasFfmpeg = await installDep("ffmpeg", isTTY);
+					const hasYtdlp = await installDep("yt-dlp", isTTY);
+					if (!hasYtdlp || !hasFfmpeg) {
+						const missing = [!hasYtdlp && "yt-dlp", !hasFfmpeg && "ffmpeg"].filter(Boolean).join(", ");
+						outputError(`Missing dependencies: ${missing}`, format);
+						return;
+					}
+
+					const config = defaultConfig("small", language, "elevenlabs");
+					config.elevenlabs.model = selectedModel as typeof config.elevenlabs.model;
+					config.elevenlabs.diarize = diarize;
+					writeConfig(config);
+
+					if (isTTY) p.log.step("Agent skill setup...");
+					const skillInstalled = await installSkill(isTTY);
+
+					if (isTTY) {
+						p.outro(`trx is ready (elevenlabs, ${selectedModel}). Run: trx <url-or-file>`);
+					}
+
+					output(format, {
+						json: {
+							success: true,
+							backend: "elevenlabs",
+							model: selectedModel,
+							diarize,
+							language,
+							skillInstalled,
+							config,
+						},
+					});
+					return;
 				}
 
 				if (selectedBackend === "vercel") {

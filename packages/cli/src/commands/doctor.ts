@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
 import { Command } from "commander";
+import { getElevenLabsKey } from "../core/elevenlabs.ts";
 import { getConfigPath, getModelsDir, readConfig } from "../utils/config.ts";
 import { type OutputFormat, output, outputError } from "../utils/output.ts";
 import { spawn } from "../utils/spawn.ts";
@@ -40,16 +41,26 @@ export function createDoctorCommand(): Command {
 		const backend = config?.backend || "local";
 		const hasApiKey = !!process.env.OPENAI_API_KEY;
 		const hasGatewayKey = !!process.env.AI_GATEWAY_API_KEY;
+		// Resolved rather than read from env, because on macOS the key may only exist in the
+		// Keychain. Reporting "not set" for a key trx would successfully use is the kind of
+		// wrong-but-plausible answer a doctor command exists to prevent.
+		const hasElevenLabsKey = await getElevenLabsKey().then(
+			() => true,
+			() => false,
+		);
 		const isOpenAI = backend === "openai";
 		const isVercel = backend === "vercel";
-		const isCloud = isOpenAI || isVercel;
+		const isElevenLabs = backend === "elevenlabs";
+		const isCloud = isOpenAI || isVercel || isElevenLabs;
 		const coreDepsOk = ytdlp.installed && ffmpeg.installed;
 		const localDepsOk = coreDepsOk && whisper.installed;
 		const healthy = isOpenAI
 			? coreDepsOk && !!config && hasApiKey
 			: isVercel
 				? coreDepsOk && !!config && hasGatewayKey
-				: localDepsOk && !!config && modelExists;
+				: isElevenLabs
+					? coreDepsOk && !!config && hasElevenLabsKey
+					: localDepsOk && !!config && modelExists;
 
 		const data = {
 			healthy,
@@ -62,6 +73,11 @@ export function createDoctorCommand(): Command {
 			vercel: {
 				apiKey: hasGatewayKey,
 				model: config?.vercel?.model || "openai/whisper-1",
+			},
+			elevenlabs: {
+				apiKey: hasElevenLabsKey,
+				model: config?.elevenlabs?.model || "scribe_v2",
+				diarize: config?.elevenlabs?.diarize ?? false,
 			},
 			config: {
 				exists: !!config,
@@ -90,6 +106,11 @@ export function createDoctorCommand(): Command {
 			if (isVercel) {
 				console.log(`  API Key: ${hasGatewayKey ? "\u2713" : "\u2717 (AI_GATEWAY_API_KEY not set)"}`);
 				console.log(`  API Model: ${config?.vercel?.model || "openai/whisper-1"}`);
+			}
+			if (isElevenLabs) {
+				console.log(`  API Key: ${hasElevenLabsKey ? "\u2713" : "\u2717 (ELEVENLABS_API_KEY not set)"}`);
+				console.log(`  API Model: ${config?.elevenlabs?.model || "scribe_v2"}`);
+				console.log(`  Diarize: ${config?.elevenlabs?.diarize ? "on" : "off"}`);
 			}
 			console.log();
 			const deps = isCloud
@@ -123,6 +144,7 @@ export function createDoctorCommand(): Command {
 				const issues: string[] = [];
 				if (isOpenAI && !hasApiKey) issues.push("OPENAI_API_KEY not set");
 				if (isVercel && !hasGatewayKey) issues.push("AI_GATEWAY_API_KEY not set");
+				if (isElevenLabs && !hasElevenLabsKey) issues.push("ELEVENLABS_API_KEY not set");
 				if (!coreDepsOk) issues.push('missing dependencies, run "trx init"');
 				if (!isCloud && !whisper.installed) issues.push('whisper-cli missing, run "trx init"');
 				outputError(issues.join("; "), "table");
