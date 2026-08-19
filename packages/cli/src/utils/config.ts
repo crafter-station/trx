@@ -2,9 +2,11 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 
-export type Backend = "local" | "openai" | "vercel";
+export type Backend = "local" | "openai" | "vercel" | "elevenlabs";
 
 export type OpenAIModel = "gpt-4o-transcribe" | "gpt-4o-mini-transcribe" | "whisper-1";
+
+export type ElevenLabsModel = "scribe_v2" | "scribe_v1";
 
 export interface TrxConfig {
 	backend: Backend;
@@ -18,6 +20,10 @@ export interface TrxConfig {
 	};
 	vercel: {
 		model: string;
+	};
+	elevenlabs: {
+		model: ElevenLabsModel;
+		diarize: boolean;
 	};
 	whisperFlags: {
 		suppressNst: boolean;
@@ -63,6 +69,7 @@ export function readConfig(): TrxConfig | null {
 			...saved,
 			openai: { ...defaults.openai, ...(saved.openai || {}) },
 			vercel: { ...defaults.vercel, ...(saved.vercel || {}) },
+			elevenlabs: { ...defaults.elevenlabs, ...(saved.elevenlabs || {}) },
 			whisperFlags: { ...defaults.whisperFlags, ...(saved.whisperFlags || {}) },
 		};
 	} catch {
@@ -88,6 +95,10 @@ export function defaultConfig(modelSize: string, language: string, backend: Back
 		},
 		vercel: {
 			model: "openai/whisper-1",
+		},
+		elevenlabs: {
+			model: "scribe_v2",
+			diarize: false,
 		},
 		whisperFlags: {
 			suppressNst: true,
