@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { resolve } from "node:path";
 import { lastCueEndMs } from "../src/core/audio.ts";
 import { stitchSrt } from "../src/core/chunk.ts";
+import { cuesToSrt, cuesToTranscript, getElevenLabsKey, wordsToCues } from "../src/core/elevenlabs.ts";
 import { presetLanguages, presetPrompt } from "../src/core/prompts.ts";
 import { buildWhisperArgs } from "../src/core/whisper.ts";
 import { validateOutputFormat } from "../src/validation/input.ts";
@@ -817,5 +818,277 @@ describe("lastCueEndMs", () => {
 	test("survives cues that arrive out of order", () => {
 		const srt = "1\n00:00:09,000 --> 00:00:10,000\nb\n\n2\n00:00:01,000 --> 00:00:02,000\na\n";
 		expect(lastCueEndMs(srt)).toBe(10_000);
+	});
+});
+
+describe("elevenlabs words to cues", () => {
+	// Scribe returns the gaps between words as their own entries. Counting them would inflate
+	// every word count and put empty cues in the SRT.
+	test("drops spacing entries and keeps only words", () => {
+		const cues = wordsToCues([
+			{ text: "hola", type: "word", start: 0, end: 0.4 },
+			{ text: " ", type: "spacing", start: 0.4, end: 0.45 },
+			{ text: "mundo", type: "word", start: 0.45, end: 0.9 },
+		]);
+		expect(cues).toHaveLength(1);
+		expect(cues[0].text).toBe("hola mundo");
+	});
+
+	test("a spacing entry never becomes a cue of its own", () => {
+		const cues = wordsToCues([{ text: "   ", type: "spacing", start: 0, end: 5 }]);
+		expect(cues).toHaveLength(0);
+	});
+
+	// A silence longer than the threshold reads as a sentence boundary. Scribe does not
+	// always punctuate, so the pause is the only signal available.
+	test("splits on a pause longer than the gap threshold", () => {
+		const cues = wordsToCues([
+			{ text: "uno", type: "word", start: 0, end: 0.4 },
+			{ text: "dos", type: "word", start: 2.0, end: 2.4 },
+		]);
+		expect(cues).toHaveLength(2);
+		expect(cues[0].text).toBe("uno");
+		expect(cues[1].text).toBe("dos");
+	});
+
+	test("keeps words together across a pause below the threshold", () => {
+		const cues = wordsToCues([
+			{ text: "uno", type: "word", start: 0, end: 0.4 },
+			{ text: "dos", type: "word", start: 0.5, end: 0.9 },
+		]);
+		expect(cues).toHaveLength(1);
+		expect(cues[0].text).toBe("uno dos");
+	});
+
+	// Two speakers inside one cue misattribute the line, which is worse than a short cue.
+	// This cut is not subject to the gap or length thresholds.
+	test("a change of speaker forces a new cue even with no pause", () => {
+		const cues = wordsToCues([
+			{ text: "hola", type: "word", start: 0, end: 0.3, speaker_id: "speaker_0" },
+			{ text: "si", type: "word", start: 0.31, end: 0.6, speaker_id: "speaker_1" },
+		]);
+		expect(cues).toHaveLength(2);
+		expect(cues[0].speaker).toBe("speaker_0");
+		expect(cues[1].speaker).toBe("speaker_1");
+	});
+
+	test("carries the speaker of each cue through to the SRT label", () => {
+		const cues = wordsToCues([
+			{ text: "hola", type: "word", start: 0, end: 0.3, speaker_id: "speaker_0" },
+			{ text: "si", type: "word", start: 0.31, end: 0.6, speaker_id: "speaker_1" },
+		]);
+		const srt = cuesToSrt(cues, true);
+		expect(srt).toContain("[speaker_0] hola");
+		expect(srt).toContain("[speaker_1] si");
+	});
+
+	// The same cues without diarization must not grow labels, because speaker_id is absent
+	// and a label of "undefined" would be worse than none.
+	test("omits speaker labels when diarization is off", () => {
+		const cues = wordsToCues([{ text: "hola", type: "word", start: 0, end: 0.3 }]);
+		expect(cuesToSrt(cues, false)).not.toContain("[");
+	});
+
+	test("caps a cue that runs long with no pause", () => {
+		const words = Array.from({ length: 40 }, (_, i) => ({
+			text: "palabra",
+			type: "word",
+			start: i * 0.1,
+			end: i * 0.1 + 0.09,
+		}));
+		const cues = wordsToCues(words);
+		expect(cues.length).toBeGreaterThan(1);
+		for (const cue of cues) {
+			expect(cue.text.length).toBeLessThanOrEqual(84);
+		}
+	});
+
+	test("emits well formed SRT timestamps", () => {
+		const srt = cuesToSrt(wordsToCues([{ text: "hola", type: "word", start: 1.5, end: 2.25 }]), false);
+		expect(srt).toBe("1\n00:00:01,500 --> 00:00:02,250\nhola\n");
+	});
+
+	// Consecutive cues from one speaker are one turn to a reader, even though the SRT splits
+	// them for length.
+	test("merges consecutive cues from the same speaker into one turn", () => {
+		const transcript = cuesToTranscript([
+			{ start: 0, end: 1, text: "hola", speaker: "speaker_0" },
+			{ start: 1, end: 2, text: "que tal", speaker: "speaker_0" },
+			{ start: 2, end: 3, text: "bien", speaker: "speaker_1" },
+		]);
+		expect(transcript).toBe("[speaker_0] hola que tal\n\n[speaker_1] bien");
+	});
+});
+
+describe("elevenlabs key resolution", () => {
+	// Env first, matching the other cloud backends, so CI and containers work with no Keychain.
+	test("prefers the environment variable", async () => {
+		process.env.ELEVENLABS_API_KEY = "test-key-from-env";
+		expect(await getElevenLabsKey()).toBe("test-key-from-env");
+	});
+
+	// The message has to name the way out, in the same shape as the other backends' errors.
+	test("names how to set the key when nothing provides one", async () => {
+		const saved = process.env.ELEVENLABS_API_KEY;
+		process.env.ELEVENLABS_API_KEY = "";
+		try {
+			// On macOS a real Keychain entry may satisfy this, so only the no-key path is asserted.
+			const key = await getElevenLabsKey().catch((e: Error) => e);
+			if (key instanceof Error) {
+				expect(key.message).toContain("ELEVENLABS_API_KEY");
+			} else {
+				expect(typeof key).toBe("string");
+			}
+		} finally {
+			if (saved === undefined) {
+				delete process.env.ELEVENLABS_API_KEY;
+			} else {
+				process.env.ELEVENLABS_API_KEY = saved;
+			}
+		}
+	});
+});
+
+describe("elevenlabs backend selection", () => {
+	test("--backend elevenlabs shows Scribe in dry-run plan", async () => {
+		const { stdout, exitCode } = await run([
+			"transcribe",
+			"https://example.com/video.mp4",
+			"--backend",
+			"elevenlabs",
+			"--dry-run",
+			"--output",
+			"json",
+		]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.backend).toBe("elevenlabs");
+		expect(data.model).toBe("scribe_v2");
+		const steps = data.steps as string[];
+		expect(steps.some((s) => s.includes("ElevenLabs"))).toBe(true);
+	});
+
+	test("--diarize is reported in the plan", async () => {
+		const { stdout, exitCode } = await run([
+			"transcribe",
+			"https://example.com/video.mp4",
+			"--backend",
+			"elevenlabs",
+			"--diarize",
+			"--dry-run",
+			"--output",
+			"json",
+		]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.diarize).toBe(true);
+		const steps = data.steps as string[];
+		expect(steps.some((s) => s.includes("diarized"))).toBe(true);
+	});
+
+	// Naming a speaker count is a request to separate speakers; the API only returns labels
+	// when diarization is on, so one without the other would be a no-op.
+	test("--speakers implies diarization", async () => {
+		const { stdout, exitCode } = await run([
+			"transcribe",
+			"https://example.com/video.mp4",
+			"--backend",
+			"elevenlabs",
+			"--speakers",
+			"2",
+			"--dry-run",
+			"--output",
+			"json",
+		]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.speakers).toBe(2);
+		expect(data.diarize).toBe(true);
+	});
+
+	// Silently dropping these on another backend would return an undiarized transcript that
+	// looks like the request was honored.
+	test("rejects --diarize on a backend that cannot do it", async () => {
+		const { stdout, exitCode } = await run([
+			"transcribe",
+			"https://example.com/video.mp4",
+			"--backend",
+			"openai",
+			"--diarize",
+			"--dry-run",
+			"--output",
+			"json",
+		]);
+		expect(exitCode).toBe(1);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.success).toBe(false);
+		expect(data.error).toContain("elevenlabs");
+	});
+
+	test("rejects a speaker count outside the API range", async () => {
+		const { stdout, exitCode } = await run([
+			"transcribe",
+			"https://example.com/video.mp4",
+			"--backend",
+			"elevenlabs",
+			"--speakers",
+			"99",
+			"--dry-run",
+			"--output",
+			"json",
+		]);
+		expect(exitCode).toBe(1);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.error).toContain("1 and 32");
+	});
+
+	test("rejects a non-numeric speaker count", async () => {
+		const { stdout, exitCode } = await run([
+			"transcribe",
+			"https://example.com/video.mp4",
+			"--backend",
+			"elevenlabs",
+			"--speakers",
+			"two",
+			"--dry-run",
+			"--output",
+			"json",
+		]);
+		expect(exitCode).toBe(1);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.error).toContain("--speakers");
+	});
+
+	test("elevenlabs backend rejects models from another backend", async () => {
+		const { stdout, exitCode } = await run([
+			"transcribe",
+			"https://example.com/video.mp4",
+			"--backend",
+			"elevenlabs",
+			"--model",
+			"whisper-1",
+			"--dry-run",
+			"--output",
+			"json",
+		]);
+		expect(exitCode).toBe(1);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.error).toContain("Unknown ElevenLabs model");
+	});
+
+	test("models command lists the elevenlabs backend", async () => {
+		const { stdout, exitCode } = await run(["models", "--backend", "elevenlabs", "--output", "json"]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as Record<string, unknown>;
+		expect(data.elevenlabs).toContain("scribe_v2");
+	});
+
+	test("transcribe schema advertises the backend and its flags", async () => {
+		const { stdout, exitCode } = await run(["schema", "transcribe"]);
+		expect(exitCode).toBe(0);
+		const data = parseJSON(stdout) as Record<string, Record<string, Record<string, unknown>>>;
+		expect(data.flags["--backend"].enum).toContain("elevenlabs");
+		expect(data.flags).toHaveProperty("--diarize");
+		expect(data.flags).toHaveProperty("--speakers");
 	});
 });

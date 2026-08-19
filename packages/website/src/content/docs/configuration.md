@@ -19,6 +19,10 @@ trx stores configuration at `~/.trx/config.json`. Created automatically by `trx 
   "openai": {
     "model": "gpt-4o-transcribe"
   },
+  "elevenlabs": {
+    "model": "scribe_v2",
+    "diarize": false
+  },
   "vercel": {
     "model": "openai/whisper-1"
   },
@@ -36,7 +40,7 @@ trx stores configuration at `~/.trx/config.json`. Created automatically by `trx 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `backend` | `"local"` \| `"openai"` \| `"vercel"` | Active transcription backend |
+| `backend` | `"local"` \| `"openai"` \| `"vercel"` \| `"elevenlabs"` | Active transcription backend |
 | `modelPath` | string | Path to the local Whisper model file |
 | `modelSize` | string | Model size identifier |
 | `language` | string | Default language (`"auto"` for detection) |
@@ -44,6 +48,8 @@ trx stores configuration at `~/.trx/config.json`. Created automatically by `trx 
 | `wordTimestamps` | boolean | Enable word-level SRT by default |
 | `openai.model` | string | Default OpenAI model |
 | `vercel.model` | string | Default gateway model (`creator/model-name`) |
+| `elevenlabs.model` | `"scribe_v2"` \| `"scribe_v1"` | Default Scribe model |
+| `elevenlabs.diarize` | boolean | Separate speakers by default |
 | `whisperFlags` | object | Advanced whisper-cli flags |
 
 ## Environment variables
@@ -52,6 +58,7 @@ trx stores configuration at `~/.trx/config.json`. Created automatically by `trx 
 |----------|----------|-------------|
 | `OPENAI_API_KEY` | For OpenAI backend | Your OpenAI API key |
 | `AI_GATEWAY_API_KEY` | For Vercel backend | Your [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) API key |
+| `ELEVENLABS_API_KEY` | For ElevenLabs backend | Your [ElevenLabs](https://elevenlabs.io/app/settings/api-keys) API key. On macOS trx falls back to the `elevenlabs` entry in your login Keychain |
 
 ## Models directory
 

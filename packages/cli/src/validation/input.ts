@@ -175,6 +175,26 @@ export type WhisperModel = (typeof VALID_LOCAL_MODELS)[number];
 export const VALID_OPENAI_MODELS = ["gpt-4o-transcribe", "gpt-4o-mini-transcribe", "whisper-1"] as const;
 export type OpenAITranscribeModel = (typeof VALID_OPENAI_MODELS)[number];
 
+/**
+ * Scribe accepts ISO 639-1 and ISO 639-3, and normalizes either to 639-3 in its response
+ * (verified: `es` and `spa` both return `language_code: "spa"`). The 639-1 table above is the
+ * set whisper.cpp accepts, so it cannot be widened for every backend; this only relaxes the
+ * check where the wider set is actually valid. The shape is checked rather than the membership,
+ * because the full 639-3 register is thousands of codes and the API is the authority on which
+ * ones it serves.
+ */
+export function validateElevenLabsLanguage(lang: string): string {
+	const cleaned = rejectControlChars(lang.trim().toLowerCase());
+	if (cleaned === "auto") return cleaned;
+	if (!/^[a-z]{2,3}$/.test(cleaned)) {
+		throw new Error(`Unsupported language: "${lang}". Use an ISO 639-1 or ISO 639-3 code, or "auto".`);
+	}
+	return cleaned;
+}
+
+export const VALID_ELEVENLABS_MODELS = ["scribe_v2", "scribe_v1"] as const;
+export type ElevenLabsTranscribeModel = (typeof VALID_ELEVENLABS_MODELS)[number];
+
 export function validateModel(model: string): WhisperModel {
 	const cleaned = model.trim().toLowerCase();
 	if (!VALID_LOCAL_MODELS.includes(cleaned as WhisperModel)) {
@@ -191,12 +211,38 @@ export function validateOpenAIModel(model: string): OpenAITranscribeModel {
 	return cleaned as OpenAITranscribeModel;
 }
 
-export function validateBackend(backend: string): "local" | "openai" | "vercel" {
-	const cleaned = backend.trim().toLowerCase();
-	if (cleaned !== "local" && cleaned !== "openai" && cleaned !== "vercel") {
-		throw new Error(`Unknown backend: "${backend}". Available: local, openai, vercel`);
+export function validateElevenLabsModel(model: string): ElevenLabsTranscribeModel {
+	const cleaned = model.trim().toLowerCase();
+	if (!VALID_ELEVENLABS_MODELS.includes(cleaned as ElevenLabsTranscribeModel)) {
+		throw new Error(`Unknown ElevenLabs model: "${model}". Available: ${VALID_ELEVENLABS_MODELS.join(", ")}`);
 	}
-	return cleaned;
+	return cleaned as ElevenLabsTranscribeModel;
+}
+
+const BACKENDS = ["local", "openai", "vercel", "elevenlabs"] as const;
+
+export function validateBackend(backend: string): (typeof BACKENDS)[number] {
+	const cleaned = backend.trim().toLowerCase();
+	if (!BACKENDS.includes(cleaned as (typeof BACKENDS)[number])) {
+		throw new Error(`Unknown backend: "${backend}". Available: ${BACKENDS.join(", ")}`);
+	}
+	return cleaned as (typeof BACKENDS)[number];
+}
+
+/**
+ * Speaker count is an upstream constraint (the API caps it at 32), not a number picked here.
+ * Rejecting a bad value locally beats spending an upload to learn the same thing.
+ */
+export function validateSpeakers(value: string): number {
+	const cleaned = rejectControlChars(String(value).trim());
+	if (!/^\d+$/.test(cleaned)) {
+		throw new Error(`Invalid --speakers: "${value}". Pass a whole number between 1 and 32.`);
+	}
+	const parsed = Number.parseInt(cleaned, 10);
+	if (parsed < 1 || parsed > 32) {
+		throw new Error(`Invalid --speakers: "${value}". Must be between 1 and 32.`);
+	}
+	return parsed;
 }
 
 /**

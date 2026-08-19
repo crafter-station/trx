@@ -1,6 +1,6 @@
 {
   "command": "transcribe",
-  "description": "Transcribe audio/video from URL or local file using Whisper (local), OpenAI API, or Vercel AI Gateway",
+  "description": "Transcribe audio/video from URL or local file using Whisper (local), OpenAI API, Vercel AI Gateway, or ElevenLabs Scribe",
   "arguments": {
     "input": {
       "type": "string",
@@ -14,9 +14,19 @@
       "enum": [
         "local",
         "openai",
-        "vercel"
+        "vercel",
+        "elevenlabs"
       ],
-      "description": "Transcription backend. 'local' uses whisper-cli, 'openai' uses OpenAI API (requires OPENAI_API_KEY), 'vercel' uses Vercel AI Gateway (requires AI_GATEWAY_API_KEY)"
+      "description": "Transcription backend. 'local' uses whisper-cli, 'openai' uses OpenAI API (requires OPENAI_API_KEY), 'vercel' uses Vercel AI Gateway (requires AI_GATEWAY_API_KEY), 'elevenlabs' uses ElevenLabs Scribe (requires ELEVENLABS_API_KEY, the only backend with speaker diarization)"
+    },
+    "--diarize": {
+      "type": "boolean",
+      "default": false,
+      "description": "Separate speakers and prefix each SRT cue with its speaker label, e.g. [speaker_0]. A change of speaker always starts a new cue. Requires --backend elevenlabs; passing it to any other backend is an error rather than a silently undiarized transcript."
+    },
+    "--speakers": {
+      "type": "integer",
+      "description": "How many speakers to expect, 1-32 (upper bound set by the API). Implies --diarize. Requires --backend elevenlabs."
     },
     "--language": {
       "type": "string",
@@ -25,7 +35,7 @@
     },
     "--model": {
       "type": "string",
-      "description": "Override model. Local: tiny, base, small, medium, large, large-v3-turbo. OpenAI: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1. Vercel: creator/model-name, e.g. openai/whisper-1"
+      "description": "Override model. Local: tiny, base, small, medium, large, large-v3-turbo. OpenAI: gpt-4o-transcribe, gpt-4o-mini-transcribe, whisper-1. Vercel: creator/model-name, e.g. openai/whisper-1. ElevenLabs: scribe_v2, scribe_v1"
     },
     "--words": {
       "type": "boolean",
@@ -64,7 +74,7 @@
     },
     "--json": {
       "type": "string",
-      "description": "Raw JSON payload: {\"input\": \"...\", \"language\": \"...\", \"model\": \"...\", \"backend\": \"...\", \"cookiesFromBrowser\": \"chrome\"}"
+      "description": "Raw JSON payload: {\"input\": \"...\", \"language\": \"...\", \"model\": \"...\", \"backend\": \"...\", \"diarize\": true, \"speakers\": 2, \"cookiesFromBrowser\": \"chrome\"}"
     },
     "--output-dir": {
       "type": "string",
@@ -84,7 +94,7 @@
     "--no-chunk": {
       "type": "boolean",
       "default": false,
-      "description": "Disable automatic chunking for oversized OpenAI and Vercel uploads"
+      "description": "Disable automatic chunking for oversized OpenAI and Vercel uploads. The elevenlabs backend has a 5 GB limit and never chunks."
     },
     "--cookies-from-browser": {
       "type": "string",
@@ -94,7 +104,7 @@
   "output": {
     "success": "boolean",
     "input": "string",
-    "backend": "string (local | openai | vercel)",
+    "backend": "string (local | openai | vercel | elevenlabs)",
     "files": {
       "wav": "string (path)",
       "srt": "string (path)",
@@ -107,7 +117,7 @@
       "transcribedDurationMs": "integer|null, how long the audio that reached the model ran. A large gap from inputDurationMs means the timeline was rewritten",
       "lastCueEndMs": "integer|null, where the last cue ends. The gap to transcribedDurationMs is audio that produced no words"
     },
-    "text": "string (full transcript)"
+    "text": "string (full transcript; with --diarize, turns are prefixed [speaker_N] and separated by blank lines)"
   },
   "examples": [
     "trx transcribe recording.mp4 --output json",
@@ -117,6 +127,8 @@
     "trx transcribe https://youtube.com/watch?v=abc --language es --output json",
     "trx transcribe https://www.instagram.com/reel/... --cookies-from-browser chrome --output json",
     "trx transcribe video.mp4 --fields text --output json",
-    "trx transcribe video.mp4 --dry-run --output json"
+    "trx transcribe video.mp4 --dry-run --output json",
+    "trx transcribe interview.m4a -b elevenlabs --diarize --output json",
+    "trx transcribe interview.m4a -b elevenlabs --speakers 2 --language spa --output json"
   ]
 }

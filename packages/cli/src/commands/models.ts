@@ -1,6 +1,11 @@
 import { Command } from "commander";
 import { type OutputFormat, output, outputError } from "../utils/output.ts";
-import { VALID_LOCAL_MODELS, VALID_OPENAI_MODELS, validateBackend } from "../validation/input.ts";
+import {
+	VALID_ELEVENLABS_MODELS,
+	VALID_LOCAL_MODELS,
+	VALID_OPENAI_MODELS,
+	validateBackend,
+} from "../validation/input.ts";
 
 const GATEWAY_MODELS_URL = "https://ai-gateway.vercel.sh/v1/models";
 const MISSING_GATEWAY_KEY = "AI_GATEWAY_API_KEY not set";
@@ -38,7 +43,7 @@ async function fetchVercelModels(apiKey: string): Promise<string[]> {
 export function createModelsCommand(): Command {
 	return new Command("models")
 		.description("List available transcription models")
-		.option("-b, --backend <name>", "filter by backend (local, openai, vercel)")
+		.option("-b, --backend <name>", "filter by backend (local, openai, vercel, elevenlabs)")
 		.action(async (opts, cmd) => {
 			const format: OutputFormat = cmd.optsWithGlobals().output;
 
@@ -62,6 +67,11 @@ export function createModelsCommand(): Command {
 				if (!backend || backend === "openai") {
 					data.openai = VALID_OPENAI_MODELS;
 					rows.push(...VALID_OPENAI_MODELS.map((model) => ["openai", model]));
+				}
+
+				if (!backend || backend === "elevenlabs") {
+					data.elevenlabs = VALID_ELEVENLABS_MODELS;
+					rows.push(...VALID_ELEVENLABS_MODELS.map((model) => ["elevenlabs", model]));
 				}
 
 				if (!backend || backend === "vercel") {

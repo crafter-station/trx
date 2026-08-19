@@ -3,6 +3,7 @@ import { basename, resolve } from "node:path";
 import type { Backend, TrxConfig } from "../utils/config.ts";
 import { cleanAudio, durationMs, lastCueEndMs } from "./audio.ts";
 import { downloadMedia } from "./download.ts";
+import { transcribeElevenLabs } from "./elevenlabs.ts";
 import { transcribeOpenAI } from "./openai.ts";
 import { transcribeVercel } from "./vercel.ts";
 import { transcribe, type WhisperProgress } from "./whisper.ts";
@@ -17,6 +18,10 @@ export interface PipelineOptions {
 	noDownload?: boolean;
 	noClean?: boolean;
 	noChunk?: boolean;
+	/** Separate speakers. Only the elevenlabs backend implements this. */
+	diarize?: boolean;
+	/** Hint for how many speakers are present, when known. */
+	numSpeakers?: number;
 	cookiesFromBrowser?: string;
 	/** Initial prompt for the model, already resolved to the spoken language. */
 	prompt?: string | null;
@@ -112,6 +117,34 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 			success: true,
 			input: opts.input,
 			backend: "vercel",
+			files: {
+				wav: wavPath,
+				srt: result.srtPath,
+				txt: result.txtPath,
+			},
+			metadata: {
+				language: opts.language || "auto",
+				model,
+				...(await coverage(inputFile, audioInput, result.srtPath)),
+			},
+			text: result.text,
+		};
+	}
+
+	if (backend === "elevenlabs") {
+		const model = config.elevenlabs.model;
+		const diarize = opts.diarize ?? config.elevenlabs.diarize;
+		opts.onStep?.(`Transcribing with ElevenLabs ${model}${diarize ? " (diarized)" : ""}...`);
+		const result = await transcribeElevenLabs(audioInput, model, opts.language, {
+			onStep: opts.onStep,
+			diarize,
+			numSpeakers: opts.numSpeakers,
+		});
+
+		return {
+			success: true,
+			input: opts.input,
+			backend: "elevenlabs",
 			files: {
 				wav: wavPath,
 				srt: result.srtPath,

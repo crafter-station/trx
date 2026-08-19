@@ -49,9 +49,36 @@ trx transcribe video.mp4 --language es
 # Keep fillers and false starts instead of a cleaned-up transcript
 trx transcribe video.mp4 --words --language es --preset verbatim
 
+# Separate speakers (ElevenLabs Scribe)
+trx transcribe interview.m4a -b elevenlabs --speakers 2
+
 # Schema introspection for agents
 trx schema transcribe
 ```
+
+### Speaker diarization
+
+`--backend elevenlabs` transcribes through ElevenLabs Scribe, the one backend that reports who
+is speaking. `--diarize` prefixes every cue with its speaker; `--speakers <n>` adds the count
+when you know it and implies `--diarize`.
+
+```srt
+1
+00:00:01,900 --> 00:00:03,400
+[speaker_0] Hola, que tal? Escuchas?
+
+2
+00:00:04,520 --> 00:00:05,900
+[speaker_1] Si, te escucho bien.
+```
+
+Scribe timestamps every word, so cues are grouped to stay readable: a pause of 0.6s or more
+starts a new cue, a cue is capped at 84 characters, and a change of speaker always starts a new
+one so no single cue attributes two people to one line. The `.txt` reads as a conversation, one
+paragraph per turn. Both flags are rejected on other backends rather than ignored.
+
+Needs `ELEVENLABS_API_KEY`. On macOS trx also reads the `elevenlabs` entry from your login
+Keychain, so a key stored there does not have to be exported into every shell.
 
 ### Verbatim transcripts
 
@@ -112,7 +139,7 @@ Input (URL or file)
 [ffmpeg] Clean audio (noise reduction, normalization; duration preserved)
   |
   v
-[whisper-cli] Transcribe (local Whisper model)
+[whisper-cli | OpenAI | Vercel AI Gateway | ElevenLabs Scribe] Transcribe
   |
   v
 Output: .wav + .srt + .txt + JSON
@@ -124,12 +151,16 @@ Stored at `~/.trx/config.json` after `trx init`:
 
 ```json
 {
+  "backend": "local",
   "modelPath": "~/.trx/models/ggml-small.bin",
   "modelSize": "small",
   "language": "auto",
-  "threads": 8
+  "threads": 8,
+  "elevenlabs": { "model": "scribe_v2", "diarize": false }
 }
 ```
+
+Backends: `local` (whisper.cpp) | `openai` (`OPENAI_API_KEY`) | `vercel` (`AI_GATEWAY_API_KEY`) | `elevenlabs` (`ELEVENLABS_API_KEY`, speaker diarization)
 
 Models: `tiny` (75MB) | `base` (142MB) | `small` (466MB) | `medium` (1.5GB) | `large` (3GB)
 

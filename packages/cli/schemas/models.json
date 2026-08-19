@@ -1,13 +1,14 @@
 {
 	"command": "models",
-	"description": "List available transcription models for local, OpenAI, and Vercel AI Gateway backends",
+	"description": "List available transcription models for local, OpenAI, Vercel AI Gateway, and ElevenLabs backends",
 	"flags": {
 		"--backend": {
 			"type": "string",
 			"enum": [
 				"local",
 				"openai",
-				"vercel"
+				"vercel",
+				"elevenlabs"
 			],
 			"description": "Filter models to one backend"
 		},
@@ -25,11 +26,13 @@
 	"output": {
 		"local": "string[]",
 		"openai": "string[]",
+		"elevenlabs": "string[]",
 		"vercel": "string[] or { error: string }"
 	},
 	"examples": [
 		"trx models",
 		"trx models --backend local --output json",
-		"trx models --backend vercel --output json"
+		"trx models --backend vercel --output json",
+		"trx models --backend elevenlabs --output json"
 	]
 }
