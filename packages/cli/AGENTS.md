@@ -1,6 +1,6 @@
 # @crafter/trx - Agent Guide
 
-`@crafter/trx` is an agent-first CLI that transcribes audio/video from URLs (YouTube, Twitter, Instagram, any yt-dlp source) or local files using Whisper, locally via whisper-cli or remotely via the OpenAI API. Reach for it when a task needs speech-to-text: extracting the transcript of a video/podcast, generating subtitles (.srt), or turning a recording into text for summarization. Output auto-switches to JSON when piped, supports `--fields` to limit payload size, `--dry-run` validation, and `trx schema` introspection.
+`@crafter/trx` is an agent-first CLI that transcribes audio/video from URLs (YouTube, Twitter, Instagram, any yt-dlp source) or local files using Whisper, locally via whisper-cli or remotely via the OpenAI API, the Vercel AI Gateway, or ElevenLabs Scribe (the one backend that separates speakers). Reach for it when a task needs speech-to-text: extracting the transcript of a video/podcast, generating subtitles (.srt), or turning a recording into text for summarization. Output auto-switches to JSON when piped, supports `--fields` to limit payload size, `--dry-run` validation, and `trx schema` introspection.
 
 ## Install
 
@@ -32,7 +32,7 @@ Global option (all commands): `-o, --output <format>` with `json`, `table`, or `
 
 | Flag | Description |
 |------|-------------|
-| `-b, --backend <backend>` | `local` (whisper-cli) or `openai` (needs `OPENAI_API_KEY`) |
+| `-b, --backend <backend>` | `local` (whisper-cli), `openai` (needs `OPENAI_API_KEY`), `vercel` (needs `AI_GATEWAY_API_KEY`), or `elevenlabs` (needs `ELEVENLABS_API_KEY`) |
 | `-m, --model <size>` | Whisper model size, default `small` (`tiny`/`base`/`small`/`medium`/`large`) |
 | `-l, --language <code>` | Default language, `auto` = detect |
 
@@ -41,8 +41,10 @@ Global option (all commands): `-o, --output <format>` with `json`, `table`, or `
 | Flag | Description |
 |------|-------------|
 | `-l, --language <lang>` | Force language (ISO 639-1), default auto-detect |
-| `-m, --model <size>` | Override model. Local: `tiny`/`base`/`small`/`medium`/`large`/`large-v3-turbo`. OpenAI: `gpt-4o-transcribe`/`gpt-4o-mini-transcribe`/`whisper-1` |
-| `-b, --backend <backend>` | `local`, `openai`, or `vercel` |
+| `-m, --model <size>` | Override model. Local: `tiny`/`base`/`small`/`medium`/`large`/`large-v3-turbo`. OpenAI: `gpt-4o-transcribe`/`gpt-4o-mini-transcribe`/`whisper-1`. ElevenLabs: `scribe_v2`/`scribe_v1` |
+| `-b, --backend <backend>` | `local`, `openai`, `vercel`, or `elevenlabs` |
+| `--diarize` | Label each cue with its speaker. `elevenlabs` only; an error on other backends |
+| `--speakers <n>` | Expected speaker count, 1-32. Implies `--diarize`. `elevenlabs` only |
 | `--fields <fields>` | Limit output fields: `text`, `srt`, `metadata`, `files` |
 | `--dry-run` | Validate input and show plan without transcribing |
 | `--json <payload>` | Raw JSON input for agents |
@@ -72,6 +74,10 @@ Global option (all commands): `-o, --output <format>` with `json`, `table`, or `
    ```bash
    OPENAI_API_KEY=sk-... trx transcribe interview.m4a --backend openai --model gpt-4o-mini-transcribe
    ```
+5. Transcribe a two-person interview with speakers separated:
+   ```bash
+   trx transcribe interview.m4a --backend elevenlabs --speakers 2 --fields text --output json
+   ```
 
 ## Decision guide
 
@@ -83,6 +89,7 @@ Global option (all commands): `-o, --output <format>` with `json`, `table`, or `
 | Discover flags at runtime without docs | `trx schema transcribe` |
 | Fast cloud transcription, no local model download | `--backend openai` with `OPENAI_API_KEY` set |
 | Force Spanish (or any language) | `trx transcribe <input> --language es` |
+| Know who said what in a meeting or interview | `--backend elevenlabs --diarize` (add `--speakers <n>` when the count is known) |
 
 ## Common mistakes
 
@@ -90,5 +97,6 @@ Global option (all commands): `-o, --output <format>` with `json`, `table`, or `
 - Wrong: running `trx transcribe` on a fresh machine. Correct: run `trx init` first; it installs whisper-cli/yt-dlp/ffmpeg and downloads the model. `trx doctor` tells you what is missing.
 - Wrong: assuming Node is enough. The `trx` binary has a `#!/usr/bin/env bun` shebang and requires Bun (`engines.bun >= 1.0.0`) even when installed through npm/npx.
 - Wrong: `--backend openai` without credentials. Correct: export `OPENAI_API_KEY` first.
+- Wrong: `--diarize` on `local`, `openai` or `vercel`. No other backend returns speaker labels, so trx rejects the flag instead of returning an undiarized transcript that looks like it worked. Correct: `--backend elevenlabs --diarize`.
 - Wrong: adding `--output json` manually in scripts. Not harmful, but unnecessary: output is already JSON whenever stdout is not a TTY.
 - Wrong: expecting `trx init` to work non-interactively on Linux via Homebrew. Dependency install uses `brew`; without it, install `whisper-cli`, `yt-dlp`, and `ffmpeg` manually, then re-run `trx init` for the model download.

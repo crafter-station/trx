@@ -58,4 +58,7 @@ One API key for any provider's transcription model, addressed as `creator/model-
 export AI_GATEWAY_API_KEY="..."
 trx init --backend vercel
 trx recording.mp4 -b vercel -m openai/whisper-1
+
+trx init --backend elevenlabs
+trx interview.m4a -b elevenlabs --speakers 2
 ```

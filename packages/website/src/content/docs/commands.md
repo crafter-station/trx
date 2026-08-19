@@ -18,8 +18,8 @@ The `transcribe` subcommand is optional — `trx <input>` works the same way.
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-b, --backend` | Transcription backend (`local`, `openai`, or `vercel`) | from config |
-| `-l, --language` | ISO 639-1 language code | `auto` |
+| `-b, --backend` | Transcription backend (`local`, `openai`, `vercel`, or `elevenlabs`) | from config |
+| `-l, --language` | ISO 639-1 language code (`elevenlabs` also accepts ISO 639-3) | `auto` |
 | `-m, --model` | Override model size | from config |
 | `-w, --words` | Word-level timestamps in SRT | `false` |
 | `--preset` | `verbatim` keeps fillers and false starts; needs `--language` | none |
@@ -29,6 +29,8 @@ The `transcribe` subcommand is optional — `trx <input>` works the same way.
 | `--dry-run` | Show execution plan without running | `false` |
 | `--no-download` | Skip yt-dlp (input must be local) | `false` |
 | `--no-clean` | Skip ffmpeg audio cleaning | `false` |
+| `--diarize` | Label each cue with its speaker (`elevenlabs` only) | `false` |
+| `--speakers` | Expected speaker count, 1-32; implies `--diarize` (`elevenlabs` only) | none |
 | `--no-chunk` | Disable automatic chunking for oversized cloud uploads | `false` |
 | `--json` | Raw JSON payload for agents | — |
 | `-o, --output` | Output format: `json`, `table`, `auto` | `auto` |
@@ -58,9 +60,36 @@ The `transcribe` subcommand is optional — `trx <input>` works the same way.
 
 Any transcription model on the [gateway](https://vercel.com/docs/ai-gateway/modalities/speech-to-text), addressed as `creator/model-name` (default `openai/whisper-1`). One `AI_GATEWAY_API_KEY` covers all providers. This is Vercel's AI Gateway, not Cloudflare's product of the same name. Run `trx models` to see what is available.
 
+**ElevenLabs Scribe:**
+
+| Model | Notes |
+|-------|-------|
+| `scribe_v2` | Latest, speaker diarization and word timestamps (default) |
+| `scribe_v1` | Previous generation |
+
+The only backend that separates speakers. Requires `ELEVENLABS_API_KEY`; on macOS trx also reads the `elevenlabs` entry from your login Keychain, so a key stored there needs no export.
+
+### Speaker diarization
+
+`--diarize` asks Scribe who is speaking and labels every cue with the result:
+
+```srt
+1
+00:00:01,900 --> 00:00:03,400
+[speaker_0] Hola, que tal? Escuchas?
+
+2
+00:00:04,520 --> 00:00:05,900
+[speaker_1] Si, te escucho bien.
+```
+
+Scribe timestamps every word, so cues are grouped for reading: a pause of 0.6s or more starts a new cue, a cue is capped at 84 characters, and a change of speaker always starts a new one so no cue attributes two people to one line. The `.txt` becomes a conversation, one paragraph per turn.
+
+Pass `--speakers <n>` when you know how many people are in the room (1-32); it implies `--diarize`. Both flags are rejected on any other backend rather than being silently ignored, because an undiarized transcript would otherwise look like the request succeeded.
+
 ### Big files
 
-Cloud backends have upload limits (OpenAI 25 MB, gateway 100 MB). Files over the limit split automatically with ffmpeg, transcribe chunk by chunk, and stitch back into one continuous transcript and SRT with correct timestamps. Use `--no-chunk` to disable and fail fast instead.
+Cloud backends have upload limits (OpenAI 25 MB, gateway 100 MB). The ElevenLabs limit is 5 GB, so that backend never chunks. Files over the limit split automatically with ffmpeg, transcribe chunk by chunk, and stitch back into one continuous transcript and SRT with correct timestamps. Use `--no-chunk` to disable and fail fast instead.
 
 ### Examples
 
@@ -76,6 +105,9 @@ trx meeting.m4a -b openai -m gpt-4o-mini-transcribe
 
 # Vercel AI Gateway with any provider's model
 trx meeting.m4a -b vercel -m openai/whisper-1
+
+# ElevenLabs Scribe, two speakers separated
+trx interview.m4a -b elevenlabs --speakers 2 -l spa
 
 # JSON output for piping
 trx video.mp4 --output json --fields text
@@ -120,10 +152,10 @@ Measured on one recording: the preset recovers `Ok.` and `Eh,` where the unpromp
 List available transcription models per backend.
 
 ```bash
-trx models [--backend local|openai|vercel] [--output json]
+trx models [--backend local|openai|vercel|elevenlabs] [--output json]
 ```
 
-Local and OpenAI lists are static. The `vercel` backend queries the gateway live (requires `AI_GATEWAY_API_KEY`), so you always see what is actually available instead of guessing model slugs.
+Local, OpenAI and ElevenLabs lists are static. The `vercel` backend queries the gateway live (requires `AI_GATEWAY_API_KEY`), so you always see what is actually available instead of guessing model slugs.
 
 ```bash
 # All backends grouped
@@ -147,7 +179,7 @@ trx init [flags]
 
 | Flag | Description | Default |
 |------|-------------|---------|
-| `-b, --backend` | Backend: `local`, `openai`, or `vercel` | `local` |
+| `-b, --backend` | Backend: `local`, `openai`, `vercel`, or `elevenlabs` | `local` |
 | `-m, --model` | Model to download/configure | `small` |
 | `-l, --language` | Default language | `auto` |
 

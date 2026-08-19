@@ -91,6 +91,10 @@ trx transcribe <input> --backend openai
 # Vercel AI Gateway (requires AI_GATEWAY_API_KEY)
 export AI_GATEWAY_API_KEY=...
 trx transcribe <input> --backend vercel --model openai/whisper-1
+
+# ElevenLabs Scribe (requires ELEVENLABS_API_KEY, separates speakers)
+export ELEVENLABS_API_KEY=...
+trx transcribe <input> --backend elevenlabs --diarize
 ```
 
 OpenAI models:
@@ -100,9 +104,22 @@ OpenAI models:
 
 Vercel model IDs use `creator/model-name` format. The default is `openai/whisper-1`. One `AI_GATEWAY_API_KEY` covers every provider on the gateway. Use a transcription model returned by `trx models --backend vercel`; this is Vercel AI Gateway, not Cloudflare AI Gateway.
 
+ElevenLabs models: `scribe_v2` (default) and `scribe_v1`. This is the only backend that reports who is speaking. On macOS the key may live in the login Keychain under `elevenlabs` instead of the environment; `trx doctor` resolves it the same way a run does, so trust its verdict over `echo $ELEVENLABS_API_KEY`.
+
+#### Speaker diarization
+
+```bash
+trx transcribe interview.m4a --backend elevenlabs --diarize --output json
+trx transcribe interview.m4a --backend elevenlabs --speakers 2 --language spa --output json
+```
+
+`--diarize` prefixes every SRT cue with its speaker (`[speaker_0]`) and turns the `.txt` into a conversation, one paragraph per turn. `--speakers <n>` (1-32) passes the count when it is known and implies `--diarize`. A change of speaker always starts a new cue, so no cue attributes two people to one line.
+
+Both flags are an error on `local`, `openai` and `vercel` rather than being ignored: no other backend returns speaker labels, and silently dropping them would hand back an undiarized transcript that looks like the request succeeded. `--language` accepts ISO 639-1 or ISO 639-3 here (`es` and `spa` both work); every other backend takes 639-1 only.
+
 Local models: `tiny`, `tiny.en`, `base`, `base.en`, `small`, `small.en`, `medium`, `medium.en`, `large`, `large-v3-turbo`.
 
-Set the backend persistently with `trx init --backend vercel` (or `local`/`openai`) or in config.
+Set the backend persistently with `trx init --backend vercel` (or `local`/`openai`/`elevenlabs`) or in config.
 
 #### Model discovery
 
@@ -111,13 +128,14 @@ trx models
 trx models --backend local --output json
 trx models --backend openai --output json
 trx models --backend vercel --output json
+trx models --backend elevenlabs --output json
 ```
 
-Local and OpenAI model lists are static. Vercel models are fetched live from the gateway and filtered to transcription models, so do not hard-code that list. `AI_GATEWAY_API_KEY` is required when requesting only the Vercel backend. Without it, the all-backends view still returns local and OpenAI models plus a Vercel error.
+Local, OpenAI and ElevenLabs model lists are static. Vercel models are fetched live from the gateway and filtered to transcription models, so do not hard-code that list. `AI_GATEWAY_API_KEY` is required when requesting only the Vercel backend. Without it, the all-backends view still returns local and OpenAI models plus a Vercel error.
 
 #### Automatic cloud-file chunking
 
-OpenAI uploads over 25 MB and Vercel uploads over 100 MB are chunked automatically with ffmpeg. trx transcribes chunks sequentially, joins their text in order, offsets and renumbers SRT timestamps, and removes intermediate chunk files. Use `--no-chunk` to disable this behavior and fail on an oversized cloud upload.
+OpenAI uploads over 25 MB and Vercel uploads over 100 MB are chunked automatically with ffmpeg. The ElevenLabs limit is 5 GB, so that backend never chunks. trx transcribes chunks sequentially, joins their text in order, offsets and renumbers SRT timestamps, and removes intermediate chunk files. Use `--no-chunk` to disable this behavior and fail on an oversized cloud upload.
 
 ### 3. Post-process (fix whisper mistakes)
 
