@@ -2,6 +2,26 @@
 
 Notable changes to `@crafter/trx`. Entries say what changed and, where it is not obvious, what measurement led to it.
 
+## 0.9.1
+
+### Fixed
+
+- **`--words` now keeps the per-word timings on the elevenlabs backend.** They were never missing: that backend sends `timestamps_granularity: word` on every request, because `wordsToCues` builds the SRT out of the response. It then returned only the SRT path and the words were dropped, so anything needing a word boundary had to make a second identical request to the same endpoint for data the first call had already parsed.
+
+  Measured in a consumer that needed them: **10.1 seconds of API wait per run** to re-fetch what was already in memory, on a 19 minute source whose first transcription took 16.3s. The flag now writes `<audio>.words.json` beside the SRT — `text`, `startMs`, `endMs`, `speaker` when diarizing, and the provider's `logprob` passed through on its own scale rather than normalised, because it scores the token and not the boundary.
+
+  No extra request and no extra latency: the words are parsed either way. What changes is whether they survive the process.
+
+- **The `--words` help text described only the local backend.** There it changes whisper's SRT segmentation; on elevenlabs it decides whether the timings are written. It now names both.
+
+## 0.9.0
+
+### Added
+
+- **ElevenLabs Scribe backend with speaker diarization** (`--backend elevenlabs`, `--diarize`, `--speakers N`). Cues are built from the API's own word timings rather than from a model's segmentation.
+
+  Why it matters for anything that edits on a transcript: whisper repairs speech. Measured on one 19 minute screencast, at the same instant, whisper returned `...sobre Normal fue muy bien recibido y tuvo muy buenos comentarios` where Scribe returned `...sobre Normal... Hola, ¿cómo están? El video an-- hola, ¿cómo están?`. Whisper had welded an aborted take onto a later complete one and dropped the seam between them, and what it produced is grammatical, so nothing downstream can tell. On that source, three blind runs of an editing tool reading a whisper transcript found one repeated take between them; one reading Scribe found five.
+
 ## 0.8.1
 
 ### Fixed
