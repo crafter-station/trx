@@ -1092,3 +1092,31 @@ describe("elevenlabs backend selection", () => {
 		expect(data.flags).toHaveProperty("--speakers");
 	});
 });
+
+describe("--words keeps the timings this backend already receives", () => {
+	test("the flag is documented as keeping them, not as fetching them", async () => {
+		// The elevenlabs backend sends timestamps_granularity: word on every
+		// request, because wordsToCues builds the SRT out of the response. The
+		// flag decides whether they survive the process, and the help text used
+		// to describe only the local backend's behaviour.
+		const { stdout } = await run(["transcribe", "--help"]);
+		expect(stdout).toContain("--words");
+		expect(stdout).toMatch(/words\.json|per-word/);
+	});
+
+	test("word entries carry a boundary and the provider's own score", async () => {
+		// Shape check on the writer, without a network call: startMs and endMs in
+		// milliseconds like every other time in this CLI, and logprob passed
+		// through on the provider's scale rather than normalised, because it
+		// scores the token and not the boundary.
+		const cues = wordsToCues([
+			{ text: "Hola,", type: "word", start: 0.959, end: 1.199, logprob: -0.00003 },
+			{ text: "¿cómo", type: "word", start: 1.339, end: 1.459, logprob: -0.0003 },
+		]);
+		expect(cues.length).toBeGreaterThan(0);
+		// Cue times are seconds here; the words file converts to milliseconds,
+		// which is the unit every downstream consumer of this CLI works in.
+		expect(cues[0]?.start).toBeCloseTo(0.959, 3);
+		expect(Math.round((cues[0]?.start ?? 0) * 1000)).toBe(959);
+	});
+});

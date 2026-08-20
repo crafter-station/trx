@@ -43,7 +43,7 @@ export function createTranscribeCommand(): Command {
 		.option("--dry-run", "validate input without transcribing")
 		.option("--json <payload>", "raw JSON input for agents")
 		.option("--output-dir <dir>", "output directory, created if missing", ".")
-		.option("-w, --words", "word-level timestamps in SRT")
+		.option("-w, --words", "keep per-word timings: SRT segmentation on the local backend, a .words.json alongside it on elevenlabs")
 		.option("--preset <name>", "verbatim: keep fillers, hesitations and false starts")
 		.option("--prompt <text>", "initial prompt passed to the model, in the spoken language")
 		.option("-b, --backend <backend>", "transcription backend (local, openai, vercel, elevenlabs)")
@@ -223,6 +223,7 @@ export function createTranscribeCommand(): Command {
 					noChunk: opts.chunk === false,
 					diarize,
 					numSpeakers,
+					words: opts.words === true,
 					cookiesFromBrowser,
 					prompt,
 					onStep: (step) => {

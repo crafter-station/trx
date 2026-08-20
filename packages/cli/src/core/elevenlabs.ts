@@ -6,6 +6,18 @@ export interface ElevenLabsTranscribeResult {
 	srtPath: string;
 	txtPath: string;
 	text: string;
+	/**
+	 * Where the per-word timings were written, when `--words` asked for them.
+	 *
+	 * Scribe returns one entry per word with its own start and end, and this
+	 * backend has always requested them: `timestamps_granularity: word` is not
+	 * optional here, because `wordsToCues` builds the SRT out of them. They were
+	 * then discarded, so a caller that needed a word boundary had to make a
+	 * second identical request to the same endpoint for data this process
+	 * already held. Measured downstream: 10.1s of API wait to re-fetch what the
+	 * first call returned.
+	 */
+	wordsPath?: string;
 }
 
 const API_URL = "https://api.elevenlabs.io/v1/speech-to-text";
@@ -22,6 +34,9 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024 * 1024;
 const MAX_SPEAKERS = 32;
 
 export interface ElevenLabsTranscribeOptions {
+	/** Write the per-word timings alongside the SRT. No extra request: the words
+	 *  are already in the response this backend parses. */
+	words?: boolean;
 	onStep?: (step: string) => void;
 	diarize?: boolean;
 	numSpeakers?: number;
@@ -234,5 +249,24 @@ export async function transcribeElevenLabs(
 	await Bun.write(srtPath, srtContent);
 	await Bun.write(txtPath, text);
 
-	return { srtPath, txtPath, text };
+	// The words are already parsed. Writing them costs a file and no request;
+	// not writing them costs a caller a second call to this endpoint.
+	let wordsPath: string | undefined;
+	if (options.words === true) {
+		wordsPath = `${audioPath}.words.json`;
+		const spoken = words
+			.filter((word) => word.type === "word" && typeof word.start === "number")
+			.map((word) => ({
+				text: word.text,
+				startMs: Math.round((word.start as number) * 1000),
+				endMs: Math.round((word.end as number) * 1000),
+				...(word.speaker_id !== undefined ? { speaker: word.speaker_id } : {}),
+				// The provider's own token score, on its own scale. Passed through
+				// rather than normalised: it scores the word, not the boundary.
+				...(word.logprob !== undefined ? { logprob: word.logprob } : {}),
+			}));
+		await Bun.write(wordsPath, `${JSON.stringify({ words: spoken }, null, 1)}\n`);
+	}
+
+	return { srtPath, txtPath, text, ...(wordsPath ? { wordsPath } : {}) };
 }

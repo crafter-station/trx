@@ -22,6 +22,14 @@ export interface PipelineOptions {
 	diarize?: boolean;
 	/** Hint for how many speakers are present, when known. */
 	numSpeakers?: number;
+	/**
+	 * Keep the per-word timings the elevenlabs backend already receives.
+	 *
+	 * On the local backend this is a whisper flag that changes SRT segmentation;
+	 * here the API returns one entry per word either way, because the SRT is
+	 * built from them. The flag only decides whether they survive the process.
+	 */
+	words?: boolean;
 	cookiesFromBrowser?: string;
 	/** Initial prompt for the model, already resolved to the spoken language. */
 	prompt?: string | null;
@@ -37,6 +45,9 @@ export interface PipelineResult {
 		wav: string;
 		srt: string;
 		txt: string;
+		/** Per-word timings, when `--words` asked for them and the backend has them.
+		 *  Only the elevenlabs backend does: it receives them to build the SRT. */
+		words?: string;
 	};
 	metadata: {
 		language: string;
@@ -139,6 +150,11 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 			onStep: opts.onStep,
 			diarize,
 			numSpeakers: opts.numSpeakers,
+			// This backend always asks the API for word timings, because the SRT is
+			// built from them. `--words` decides whether they are kept, not whether
+			// they are fetched: writing them costs a file, and dropping them costs
+			// the caller a second identical request.
+			words: opts.words === true,
 		});
 
 		return {
@@ -149,6 +165,7 @@ export async function runPipeline(opts: PipelineOptions): Promise<PipelineResult
 				wav: wavPath,
 				srt: result.srtPath,
 				txt: result.txtPath,
+				...(result.wordsPath ? { words: result.wordsPath } : {}),
 			},
 			metadata: {
 				language: opts.language || "auto",
