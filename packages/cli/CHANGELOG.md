@@ -2,7 +2,7 @@
 
 Notable changes to `@crafter/trx`. Entries say what changed and, where it is not obvious, what measurement led to it.
 
-## Unreleased
+## 0.9.2
 
 ### Fixed
 
