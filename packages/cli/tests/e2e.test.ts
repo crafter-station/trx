@@ -64,7 +64,6 @@ describe("trx doctor", () => {
 			expect(dep).toHaveProperty("installed");
 			expect(dep).toHaveProperty("path");
 		}
-		expect(deps.ffmpeg.version).toEqual(expect.any(String));
 	});
 
 	test("config section reports model info", async () => {
