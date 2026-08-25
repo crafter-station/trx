@@ -1,0 +1,217 @@
+{
+  "version": 1,
+  "name": "trx local transcription on Windows",
+  "platforms": ["windows"],
+  "vars": {},
+  "defaultTimeoutMs": 120000,
+  "steps": [
+    {
+      "type": "cuse",
+      "action": "os",
+      "saveAs": "detectedOs"
+    },
+    {
+      "type": "assert",
+      "actual": "${steps.detectedOs.detail}",
+      "operator": "eq",
+      "expected": "windows"
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "New-Item -ItemType Directory -Force -Path '.trx-windows-evidence' | Out-Null"
+      ]
+    },
+    {
+      "type": "cuse",
+      "action": "capture",
+      "args": [".trx-windows-evidence/before.png"]
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "bun",
+        "pm",
+        "pack",
+        "--filename",
+        "../../.trx-windows-evidence/trx.tgz",
+        "--ignore-scripts"
+      ],
+      "cwd": "packages/cli",
+      "timeoutMs": 300000
+    },
+    {
+      "type": "exec",
+      "argv": ["bun", "add", "--global", ".trx-windows-evidence/trx.tgz"],
+      "timeoutMs": 300000
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "trx",
+        "init",
+        "--yes",
+        "--backend",
+        "local",
+        "--model",
+        "tiny",
+        "--language",
+        "en",
+        "--output",
+        "json"
+      ],
+      "timeoutMs": 900000,
+      "saveAs": "init"
+    },
+    {
+      "type": "assert",
+      "actual": "${steps.init.stdout}",
+      "operator": "contains",
+      "expected": "\"success\": true"
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "trx",
+        "doctor",
+        "--output",
+        "json"
+      ],
+      "saveAs": "doctor"
+    },
+    {
+      "type": "assert",
+      "actual": "${steps.doctor.stdout}",
+      "operator": "contains",
+      "expected": "\"healthy\": true"
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "trx",
+        "transcribe",
+        "packages/cli/tests/fixtures/silence.wav",
+        "--backend",
+        "local",
+        "--language",
+        "en",
+        "--output-dir",
+        ".trx-windows-evidence/output",
+        "--output",
+        "json"
+      ],
+      "timeoutMs": 300000,
+      "saveAs": "transcription"
+    },
+    {
+      "type": "assert",
+      "actual": "${steps.transcription.stdout}",
+      "operator": "contains",
+      "expected": "\"success\": true"
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "Set-Content -Path '.trx-windows-evidence/init.json' -Value $env:CUSE_INIT_RESULT; Set-Content -Path '.trx-windows-evidence/doctor.json' -Value $env:CUSE_DOCTOR_RESULT; Set-Content -Path '.trx-windows-evidence/transcription.json' -Value $env:CUSE_TRANSCRIPTION_RESULT"
+      ],
+      "env": {
+        "CUSE_INIT_RESULT": "${steps.init.stdout}",
+        "CUSE_DOCTOR_RESULT": "${steps.doctor.stdout}",
+        "CUSE_TRANSCRIPTION_RESULT": "${steps.transcription.stdout}"
+      }
+    },
+    {
+      "type": "cuse",
+      "action": "launch",
+      "args": ["cmd"]
+    },
+    {
+      "type": "cuse",
+      "action": "wait",
+      "options": {
+        "window": "Command Prompt",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "type": "cuse",
+      "action": "focus",
+      "args": ["Command Prompt"]
+    },
+    {
+      "type": "cuse",
+      "action": "type",
+      "args": ["title trx-windows-proof"]
+    },
+    {
+      "type": "cuse",
+      "action": "key",
+      "args": ["Return"]
+    },
+    {
+      "type": "cuse",
+      "action": "wait",
+      "options": {
+        "window": "trx-windows-proof",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "type": "cuse",
+      "action": "type",
+      "args": ["echo trx Windows local transcription passed"]
+    },
+    {
+      "type": "cuse",
+      "action": "key",
+      "args": ["Return"]
+    },
+    {
+      "type": "cuse",
+      "action": "type",
+      "args": ["echo doctor healthy and dependencies installed"]
+    },
+    {
+      "type": "cuse",
+      "action": "key",
+      "args": ["Return"]
+    },
+    {
+      "type": "cuse",
+      "action": "settle"
+    },
+    {
+      "type": "cuse",
+      "action": "capture",
+      "args": [".trx-windows-evidence/after.png"]
+    },
+    {
+      "type": "cuse",
+      "action": "frontmost",
+      "saveAs": "proofWindow"
+    },
+    {
+      "type": "assert",
+      "actual": "${steps.proofWindow.detail}",
+      "operator": "contains",
+      "expected": "trx-windows-proof"
+    }
+  ],
+  "finally": [
+    {
+      "type": "exec",
+      "argv": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "Get-Process cmd -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'trx-windows-proof' } | Stop-Process -Force"
+      ]
+    }
+  ]
+}

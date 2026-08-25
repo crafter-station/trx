@@ -1,10 +1,19 @@
-import { existsSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import * as p from "@clack/prompts";
 import { Command } from "commander";
 import { getElevenLabsKey } from "../core/elevenlabs.ts";
-import { type Backend, defaultConfig, ensureTrxDir, getModelsDir, writeConfig } from "../utils/config.ts";
+import {
+	activateManagedBin,
+	type Backend,
+	defaultConfig,
+	ensureTrxDir,
+	getBinDir,
+	getModelsDir,
+	writeConfig,
+} from "../utils/config.ts";
 import { type OutputFormat, output, outputError } from "../utils/output.ts";
 import { spawn, spawnOrThrow } from "../utils/spawn.ts";
 import {
@@ -37,7 +46,8 @@ const ELEVENLABS_MODELS = [
 ];
 
 const HF_BASE = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
-const WHISPER_CPP_RELEASE = "https://github.com/ggerganov/whisper.cpp/releases/latest/download";
+const WHISPER_CPP_RELEASE = "https://github.com/ggml-org/whisper.cpp/releases/download/b4938";
+const WHISPER_WINDOWS_X64_SHA256 = "c2a4b60edb11f7e11a9191ffb50929535527d4d91c9903dbe3e554583bbbc63d";
 
 type Platform = "macos" | "linux" | "windows";
 
@@ -60,15 +70,17 @@ async function isInstalled(name: string): Promise<boolean> {
 
 // --- macOS: Homebrew ---
 
-async function installViaBrew(name: string, brewPkg: string, isTTY: boolean): Promise<boolean> {
+async function installViaBrew(name: string, brewPkg: string, isTTY: boolean, yes: boolean): Promise<boolean> {
 	if (!(await isInstalled("brew"))) {
 		if (isTTY) p.log.error("Homebrew not found. Install from https://brew.sh");
 		return false;
 	}
 
-	const confirm = isTTY
-		? await p.confirm({ message: `${name} not found. Install via brew install ${brewPkg}?` })
-		: false;
+	const confirm = yes
+		? true
+		: isTTY
+			? await p.confirm({ message: `${name} not found. Install via brew install ${brewPkg}?` })
+			: false;
 	if (p.isCancel(confirm) || !confirm) {
 		if (isTTY) p.log.warn(`Skipped ${name}. Install manually: brew install ${brewPkg}`);
 		return false;
@@ -120,15 +132,17 @@ async function installViaBrew(name: string, brewPkg: string, isTTY: boolean): Pr
 
 // --- Linux: apt-get ---
 
-async function installViaApt(name: string, aptPkg: string, isTTY: boolean): Promise<boolean> {
+async function installViaApt(name: string, aptPkg: string, isTTY: boolean, yes: boolean): Promise<boolean> {
 	if (!(await isInstalled("apt-get"))) {
 		if (isTTY) p.log.error("apt-get not found. This installer supports Debian/Ubuntu. Install manually.");
 		return false;
 	}
 
-	const confirm = isTTY
-		? await p.confirm({ message: `${name} not found. Install via sudo apt-get install ${aptPkg}?` })
-		: false;
+	const confirm = yes
+		? true
+		: isTTY
+			? await p.confirm({ message: `${name} not found. Install via sudo apt-get install ${aptPkg}?` })
+			: false;
 	if (p.isCancel(confirm) || !confirm) {
 		if (isTTY) p.log.warn(`Skipped ${name}. Install manually: sudo apt-get install ${aptPkg}`);
 		return false;
@@ -147,7 +161,7 @@ async function installViaApt(name: string, aptPkg: string, isTTY: boolean): Prom
 
 // --- Linux: compile whisper.cpp from source ---
 
-async function installWhisperLinux(isTTY: boolean): Promise<boolean> {
+async function installWhisperLinux(isTTY: boolean, yes: boolean): Promise<boolean> {
 	for (const dep of ["git", "cmake", "make"]) {
 		if (!(await isInstalled(dep))) {
 			if (isTTY) p.log.error(`${dep} is required to build whisper.cpp. Install it first.`);
@@ -155,9 +169,11 @@ async function installWhisperLinux(isTTY: boolean): Promise<boolean> {
 		}
 	}
 
-	const confirm = isTTY
-		? await p.confirm({ message: "whisper-cli not found. Build from source (whisper.cpp)?" })
-		: false;
+	const confirm = yes
+		? true
+		: isTTY
+			? await p.confirm({ message: "whisper-cli not found. Build from source (whisper.cpp)?" })
+			: false;
 	if (p.isCancel(confirm) || !confirm) {
 		if (isTTY) p.log.warn("Skipped whisper-cli. See: https://github.com/ggerganov/whisper.cpp");
 		return false;
@@ -199,15 +215,42 @@ async function installWhisperLinux(isTTY: boolean): Promise<boolean> {
 
 // --- Windows: winget ---
 
-async function installViaWinget(name: string, wingetPkg: string, isTTY: boolean): Promise<boolean> {
+async function refreshWindowsPath(): Promise<void> {
+	const result = await spawn([
+		"powershell",
+		"-NoProfile",
+		"-Command",
+		"[Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')",
+	]);
+	if (result.exitCode === 0 && result.stdout) {
+		process.env.PATH = `${process.env.PATH || ""};${result.stdout}`;
+		activateManagedBin();
+	}
+}
+
+async function copyWindowsBinaries(name: string): Promise<boolean> {
+	const binaries = name === "ffmpeg" ? ["ffmpeg", "ffprobe"] : [name];
+	for (const binary of binaries) {
+		const result = await spawn(["where", binary]);
+		const source = result.stdout.split(/\r?\n/).find(Boolean);
+		if (result.exitCode !== 0 || !source || !existsSync(source)) return false;
+		copyFileSync(source, join(getBinDir(), `${binary}.exe`));
+	}
+	activateManagedBin();
+	return true;
+}
+
+async function installViaWinget(name: string, wingetPkg: string, isTTY: boolean, yes: boolean): Promise<boolean> {
 	if (!(await isInstalled("winget"))) {
 		if (isTTY) p.log.error("winget not found. Install App Installer from the Microsoft Store.");
 		return false;
 	}
 
-	const confirm = isTTY
-		? await p.confirm({ message: `${name} not found. Install via winget install ${wingetPkg}?` })
-		: false;
+	const confirm = yes
+		? true
+		: isTTY
+			? await p.confirm({ message: `${name} not found. Install via winget install ${wingetPkg}?` })
+			: false;
 	if (p.isCancel(confirm) || !confirm) {
 		if (isTTY) p.log.warn(`Skipped ${name}. Install manually: winget install ${wingetPkg}`);
 		return false;
@@ -216,9 +259,23 @@ async function installViaWinget(name: string, wingetPkg: string, isTTY: boolean)
 	try {
 		if (isTTY) p.log.step(`Installing ${wingetPkg}...`);
 		await spawnOrThrow(
-			["winget", "install", "--id", wingetPkg, "--accept-source-agreements", "--accept-package-agreements"],
+			[
+				"winget",
+				"install",
+				"--id",
+				wingetPkg,
+				"--exact",
+				"--disable-interactivity",
+				"--accept-source-agreements",
+				"--accept-package-agreements",
+			],
 			`winget install ${wingetPkg}`,
 		);
+		await refreshWindowsPath();
+		if (!(await isInstalled(name)) || !(await copyWindowsBinaries(name))) {
+			if (isTTY) p.log.error(`${name} was installed but is not available on PATH`);
+			return false;
+		}
 		if (isTTY) p.log.success(`${name} installed`);
 		return true;
 	} catch (e) {
@@ -229,10 +286,12 @@ async function installViaWinget(name: string, wingetPkg: string, isTTY: boolean)
 
 // --- Windows: download whisper-cli binary from GitHub releases ---
 
-async function installWhisperWindows(isTTY: boolean): Promise<boolean> {
-	const confirm = isTTY
-		? await p.confirm({ message: "whisper-cli not found. Download pre-built binary from GitHub?" })
-		: false;
+async function installWhisperWindows(isTTY: boolean, yes: boolean): Promise<boolean> {
+	const confirm = yes
+		? true
+		: isTTY
+			? await p.confirm({ message: "whisper-cli not found. Download pre-built binary from GitHub?" })
+			: false;
 	if (p.isCancel(confirm) || !confirm) {
 		if (isTTY) p.log.warn("Skipped whisper-cli. See: https://github.com/ggerganov/whisper.cpp/releases");
 		return false;
@@ -242,55 +301,73 @@ async function installWhisperWindows(isTTY: boolean): Promise<boolean> {
 	const downloadUrl = `${WHISPER_CPP_RELEASE}/${zipName}`;
 	const downloadDir = join(tmpdir(), "whisper-download");
 	const zipPath = join(downloadDir, zipName);
-	const installDir = join(
-		process.env.LOCALAPPDATA || join(process.env.USERPROFILE || "", "AppData", "Local"),
-		"whisper-cpp",
-	);
+	const extractDir = join(downloadDir, "extracted");
+	const installDir = getBinDir();
 
 	try {
 		if (isTTY) p.log.step("Downloading whisper-cli...");
 
-		await spawnOrThrow(["cmd", "/c", "mkdir", downloadDir], "create temp dir").catch(() => {});
+		rmSync(downloadDir, { recursive: true, force: true });
+		mkdirSync(extractDir, { recursive: true });
 		await spawnOrThrow(["curl", "-L", "--progress-bar", "-o", zipPath, downloadUrl], "download whisper-cli");
-
-		if (isTTY) p.log.step("Extracting...");
-		await spawnOrThrow(["cmd", "/c", "mkdir", installDir], "create install dir").catch(() => {});
-		await spawnOrThrow(
-			["powershell", "-Command", `Expand-Archive -Force -Path '${zipPath}' -DestinationPath '${installDir}'`],
-			"extract whisper-cli",
-		);
-
-		if (isTTY) {
-			p.log.success("whisper-cli extracted");
-			p.log.info(`Add to PATH: ${installDir}`);
-			p.log.info(`Run: [System.Environment]::SetEnvironmentVariable("PATH", $env:PATH + ";${installDir}", "User")`);
+		const digest = createHash("sha256").update(readFileSync(zipPath)).digest("hex");
+		if (digest !== WHISPER_WINDOWS_X64_SHA256) {
+			throw new Error(`whisper-cli checksum mismatch: expected ${WHISPER_WINDOWS_X64_SHA256}, got ${digest}`);
 		}
 
-		await spawn(["cmd", "/c", "rmdir", "/s", "/q", downloadDir]);
+		if (isTTY) p.log.step("Extracting...");
+		const escapedZipPath = zipPath.replaceAll("'", "''");
+		const escapedExtractDir = extractDir.replaceAll("'", "''");
+		await spawnOrThrow(
+			[
+				"powershell",
+				"-NoProfile",
+				"-Command",
+				`Expand-Archive -Force -LiteralPath '${escapedZipPath}' -DestinationPath '${escapedExtractDir}'`,
+			],
+			"extract whisper-cli",
+		);
+		const releaseDir = join(extractDir, "Release");
+		if (!existsSync(join(releaseDir, "whisper-cli.exe"))) {
+			throw new Error(`whisper-cli.exe not found in ${zipName}`);
+		}
+		for (const entry of readdirSync(releaseDir)) {
+			copyFileSync(join(releaseDir, entry), join(installDir, entry));
+		}
+		activateManagedBin();
+		if (!(await isInstalled("whisper-cli"))) {
+			throw new Error(`whisper-cli was extracted but is not available from ${installDir}`);
+		}
+
+		if (isTTY) {
+			p.log.success(`whisper-cli installed in ${installDir}`);
+		}
+
+		rmSync(downloadDir, { recursive: true, force: true });
 		return true;
 	} catch (e) {
 		if (isTTY) p.log.error(`Failed: ${(e as Error).message}`);
-		await spawn(["cmd", "/c", "rmdir", "/s", "/q", downloadDir]);
+		rmSync(downloadDir, { recursive: true, force: true });
 		return false;
 	}
 }
 
 // --- Unified dependency installer ---
 
-async function installDep(name: string, isTTY: boolean): Promise<boolean> {
+async function installDep(name: string, isTTY: boolean, yes: boolean): Promise<boolean> {
 	if (await isInstalled(name)) return true;
-	if (!isTTY) return false;
+	if (!isTTY && !yes) return false;
 
 	const platform = getPlatform();
 
 	if (name === "whisper-cli") {
 		switch (platform) {
 			case "macos":
-				return installViaBrew(name, "whisper-cpp", isTTY);
+				return installViaBrew(name, "whisper-cpp", isTTY, yes);
 			case "linux":
-				return installWhisperLinux(isTTY);
+				return installWhisperLinux(isTTY, yes);
 			case "windows":
-				return installWhisperWindows(isTTY);
+				return installWhisperWindows(isTTY, yes);
 		}
 	}
 
@@ -307,11 +384,11 @@ async function installDep(name: string, isTTY: boolean): Promise<boolean> {
 
 	switch (platform) {
 		case "macos":
-			return installViaBrew(name, pkg, isTTY);
+			return installViaBrew(name, pkg, isTTY, yes);
 		case "linux":
-			return installViaApt(name, pkg, isTTY);
+			return installViaApt(name, pkg, isTTY, yes);
 		case "windows":
-			return installViaWinget(name, pkg, isTTY);
+			return installViaWinget(name, pkg, isTTY, yes);
 	}
 }
 
@@ -374,6 +451,7 @@ export function createInitCommand(): Command {
 		.option("-b, --backend <backend>", "transcription backend (local, openai, vercel)")
 		.option("-m, --model <size>", "whisper model size", "small")
 		.option("-l, --language <code>", "default language (auto = detect from audio)", "auto")
+		.option("-y, --yes", "install missing dependencies without prompting")
 		.action(async (opts, cmd) => {
 			const format: OutputFormat = cmd.optsWithGlobals().output;
 			const isTTY = process.stdout.isTTY && format !== "json";
@@ -457,8 +535,8 @@ export function createInitCommand(): Command {
 					}
 
 					if (isTTY) p.log.step("Checking ffmpeg + yt-dlp (still needed for download/clean)...");
-					const hasFfmpeg = await installDep("ffmpeg", isTTY);
-					const hasYtdlp = await installDep("yt-dlp", isTTY);
+					const hasFfmpeg = await installDep("ffmpeg", isTTY, opts.yes === true);
+					const hasYtdlp = await installDep("yt-dlp", isTTY, opts.yes === true);
 					if (!hasYtdlp || !hasFfmpeg) {
 						const missing = [!hasYtdlp && "yt-dlp", !hasFfmpeg && "ffmpeg"].filter(Boolean).join(", ");
 						outputError(`Missing dependencies: ${missing}`, format);
@@ -471,7 +549,7 @@ export function createInitCommand(): Command {
 					writeConfig(config);
 
 					if (isTTY) p.log.step("Agent skill setup...");
-					const skillInstalled = await installSkill(isTTY);
+					const skillInstalled = await installSkill(isTTY && opts.yes !== true);
 
 					if (isTTY) {
 						p.outro(`trx is ready (elevenlabs, ${selectedModel}). Run: trx <url-or-file>`);
@@ -526,8 +604,8 @@ export function createInitCommand(): Command {
 					}
 
 					if (isTTY) p.log.step("Checking ffmpeg + yt-dlp (still needed for download/clean)...");
-					const hasFfmpeg = await installDep("ffmpeg", isTTY);
-					const hasYtdlp = await installDep("yt-dlp", isTTY);
+					const hasFfmpeg = await installDep("ffmpeg", isTTY, opts.yes === true);
+					const hasYtdlp = await installDep("yt-dlp", isTTY, opts.yes === true);
 					if (!hasYtdlp || !hasFfmpeg) {
 						const missing = [!hasYtdlp && "yt-dlp", !hasFfmpeg && "ffmpeg"].filter(Boolean).join(", ");
 						outputError(`Missing dependencies: ${missing}`, format);
@@ -539,7 +617,7 @@ export function createInitCommand(): Command {
 					writeConfig(config);
 
 					if (isTTY) p.log.step("Agent skill setup...");
-					const skillInstalled = await installSkill(isTTY);
+					const skillInstalled = await installSkill(isTTY && opts.yes !== true);
 
 					if (isTTY) {
 						p.outro(`trx is ready (vercel gateway, ${selectedModel}). Run: trx <url-or-file>`);
@@ -583,8 +661,8 @@ export function createInitCommand(): Command {
 					}
 
 					if (isTTY) p.log.step("Checking ffmpeg + yt-dlp (still needed for download/clean)...");
-					const hasFfmpeg = await installDep("ffmpeg", isTTY);
-					const hasYtdlp = await installDep("yt-dlp", isTTY);
+					const hasFfmpeg = await installDep("ffmpeg", isTTY, opts.yes === true);
+					const hasYtdlp = await installDep("yt-dlp", isTTY, opts.yes === true);
 					if (!hasYtdlp || !hasFfmpeg) {
 						const missing = [!hasYtdlp && "yt-dlp", !hasFfmpeg && "ffmpeg"].filter(Boolean).join(", ");
 						outputError(`Missing dependencies: ${missing}`, format);
@@ -596,7 +674,7 @@ export function createInitCommand(): Command {
 					writeConfig(config);
 
 					if (isTTY) p.log.step("Agent skill setup...");
-					const skillInstalled = await installSkill(isTTY);
+					const skillInstalled = await installSkill(isTTY && opts.yes !== true);
 
 					if (isTTY) {
 						p.outro(`trx is ready (openai/${selectedModel}). Run: trx <url-or-file>`);
@@ -620,9 +698,9 @@ export function createInitCommand(): Command {
 				if (isTTY) p.log.step("Checking dependencies...");
 
 				// install sequentially on macOS to avoid brew lock contention
-				const hasWhisper = await installDep("whisper-cli", isTTY);
-				const hasFfmpeg = await installDep("ffmpeg", isTTY);
-				const hasYtdlp = await installDep("yt-dlp", isTTY);
+				const hasWhisper = await installDep("whisper-cli", isTTY, opts.yes === true);
+				const hasFfmpeg = await installDep("ffmpeg", isTTY, opts.yes === true);
+				const hasYtdlp = await installDep("yt-dlp", isTTY, opts.yes === true);
 
 				if (!hasWhisper || !hasYtdlp || !hasFfmpeg) {
 					const missing = [!hasWhisper && "whisper-cli", !hasYtdlp && "yt-dlp", !hasFfmpeg && "ffmpeg"]
@@ -654,7 +732,7 @@ export function createInitCommand(): Command {
 				writeConfig(config);
 
 				if (isTTY) p.log.step("Agent skill setup...");
-				const skillInstalled = await installSkill(isTTY);
+				const skillInstalled = await installSkill(isTTY && opts.yes !== true);
 
 				if (isTTY) {
 					p.outro("trx is ready. Run: trx <url-or-file>");

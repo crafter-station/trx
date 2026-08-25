@@ -2,6 +2,18 @@
 
 Notable changes to `@crafter/trx`. Entries say what changed and, where it is not obvious, what measurement led to it.
 
+## Unreleased
+
+### Fixed
+
+- **Windows setup now installs the complete Whisper runtime into trx's managed binary directory.** The official archive nests `whisper-cli.exe` and its required DLLs under `Release/`; the previous installer extracted that directory one level too high, pointed the user at the wrong path, and returned success without verifying that the executable could run. The installer now pins the tested whisper.cpp release and checks its official SHA-256 digest before extraction.
+- **Windows `winget` installs are usable immediately and on later trx runs.** trx refreshes the persisted Windows path, verifies each command, and copies `ffmpeg`, `ffprobe`, and `yt-dlp` into `%USERPROFILE%\.trx\bin` so a shell restart is not required.
+
+### Added
+
+- **`trx init --yes`** installs missing dependencies without prompts for IT-managed setup and CI.
+- **A cuse-backed Windows gate** installs trx, runs `doctor`, performs a real local transcription, drives a Command Prompt window, and retains JSON plus screenshot evidence.
+
 ## 0.9.1
 
 ### Fixed

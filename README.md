@@ -15,7 +15,26 @@ bun add -g @crafter/trx
 trx init
 ```
 
-`trx init` installs dependencies (`whisper-cli`, `yt-dlp`, `ffmpeg` via Homebrew), downloads a Whisper model, and optionally installs the agent skill for your AI coding tool.
+`trx init` installs `whisper-cli`, `yt-dlp`, and `ffmpeg`, downloads a Whisper model, and optionally installs the agent skill for your AI coding tool. It uses Homebrew on macOS, apt on Debian or Ubuntu, and `winget` plus a trx-managed binary directory on Windows.
+
+### Windows
+
+Run these commands in PowerShell as the Windows user who will run trx:
+
+```powershell
+powershell -c "irm bun.sh/install.ps1 | iex"
+bun add --global @crafter/trx
+trx init --yes --backend local --model small --language es
+trx doctor --output json
+```
+
+The local backend keeps the media and transcript on the laptop. Windows stores the Whisper executable and its DLLs in `%USERPROFILE%\.trx\bin`; `ffmpeg` and `yt-dlp` are installed through `winget`. `--yes` makes setup non-interactive for IT and CI. Company policy can still block Bun, `winget`, GitHub, Hugging Face, or unsigned third-party software, so IT approval remains the final gate.
+
+Large local videos are not uploaded. trx extracts a 16 kHz mono WAV and transcribes that locally. Keep enough free disk space for the source, the temporary WAV, the model, and the transcript outputs.
+
+```powershell
+trx transcribe "C:\Users\me\Videos\meeting.mp4" --language es --output-dir "C:\Users\me\Documents\trx-output" --output json
+```
 
 ### Skill Only
 
