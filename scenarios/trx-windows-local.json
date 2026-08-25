@@ -45,7 +45,12 @@
     },
     {
       "type": "exec",
-      "argv": ["bun", "add", "--global", "packages/cli/trx.tgz"],
+      "argv": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "$tarball = (Resolve-Path 'packages/cli/trx.tgz').Path; & bun add --global $tarball; exit $LASTEXITCODE"
+      ],
       "timeoutMs": 300000
     },
     {
