@@ -17,7 +17,7 @@ async function checkBinary(name: string): Promise<DepStatus> {
 		return { installed: false, version: null, path: null };
 	}
 
-	const ver = await spawn([name, "--version"]);
+	const ver = await spawn([name, name === "ffmpeg" ? "-version" : "--version"]);
 	const version = ver.exitCode === 0 ? ver.stdout.split("\n")[0].trim() : null;
 
 	return { installed: true, version, path: binPath };

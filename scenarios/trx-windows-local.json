@@ -56,17 +56,10 @@
     {
       "type": "exec",
       "argv": [
-        "trx",
-        "init",
-        "--yes",
-        "--backend",
-        "local",
-        "--model",
-        "tiny",
-        "--language",
-        "en",
-        "--output",
-        "json"
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "$result = & trx init --yes --backend local --model tiny --language en --output json; $code = $LASTEXITCODE; $result | Set-Content -Encoding utf8 'trx-windows-evidence/init.json'; $result; exit $code"
       ],
       "timeoutMs": 900000,
       "saveAs": "init"
@@ -80,10 +73,10 @@
     {
       "type": "exec",
       "argv": [
-        "trx",
-        "doctor",
-        "--output",
-        "json"
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "$result = & trx doctor --output json; $code = $LASTEXITCODE; $result | Set-Content -Encoding utf8 'trx-windows-evidence/doctor.json'; $result; exit $code"
       ],
       "saveAs": "doctor"
     },
@@ -105,17 +98,10 @@
     {
       "type": "exec",
       "argv": [
-        "trx",
-        "transcribe",
-        "trx-windows-evidence/spoken.wav",
-        "--backend",
-        "local",
-        "--language",
-        "en",
-        "--output-dir",
-        "trx-windows-evidence/output",
-        "--output",
-        "json"
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "$result = & trx transcribe 'trx-windows-evidence/spoken.wav' --backend local --language en --output-dir 'trx-windows-evidence/output' --output json; $code = $LASTEXITCODE; $result | Set-Content -Encoding utf8 'trx-windows-evidence/transcription.json'; $result; exit $code"
       ],
       "timeoutMs": 300000,
       "saveAs": "transcription"
@@ -131,20 +117,6 @@
       "actual": "${steps.transcription.stdout}",
       "operator": "contains",
       "expected": "Windows"
-    },
-    {
-      "type": "exec",
-      "argv": [
-        "powershell",
-        "-NoProfile",
-        "-Command",
-        "Set-Content -Path 'trx-windows-evidence/init.json' -Value $env:CUSE_INIT_RESULT; Set-Content -Path 'trx-windows-evidence/doctor.json' -Value $env:CUSE_DOCTOR_RESULT; Set-Content -Path 'trx-windows-evidence/transcription.json' -Value $env:CUSE_TRANSCRIPTION_RESULT"
-      ],
-      "env": {
-        "CUSE_INIT_RESULT": "${steps.init.stdout}",
-        "CUSE_DOCTOR_RESULT": "${steps.doctor.stdout}",
-        "CUSE_TRANSCRIPTION_RESULT": "${steps.transcription.stdout}"
-      }
     },
     {
       "type": "cuse",
