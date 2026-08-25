@@ -15,7 +15,7 @@ import {
 	writeConfig,
 } from "../utils/config.ts";
 import { type OutputFormat, output, outputError } from "../utils/output.ts";
-import { spawn, spawnOrThrow } from "../utils/spawn.ts";
+import { resolveExecutable, spawn, spawnOrThrow } from "../utils/spawn.ts";
 import {
 	validateBackend,
 	validateElevenLabsModel,
@@ -68,9 +68,7 @@ function getPlatform(): Platform {
 }
 
 async function isInstalled(name: string): Promise<boolean> {
-	const cmd = getPlatform() === "windows" ? ["where", name] : ["which", name];
-	const result = await spawn(cmd);
-	return result.exitCode === 0;
+	return resolveExecutable(name) !== null;
 }
 
 // --- macOS: Homebrew ---
@@ -228,7 +226,8 @@ async function refreshWindowsPath(): Promise<void> {
 		"[Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')",
 	]);
 	if (result.exitCode === 0 && result.stdout) {
-		process.env.PATH = `${process.env.PATH || ""};${result.stdout}`;
+		const pathKey = Object.keys(process.env).find((key) => key.toLowerCase() === "path") || "Path";
+		process.env[pathKey] = `${process.env[pathKey] || ""};${result.stdout}`;
 		activateManagedBin();
 	}
 }

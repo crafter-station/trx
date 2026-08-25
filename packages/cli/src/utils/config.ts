@@ -69,7 +69,11 @@ export function ensureTrxDir(): void {
 
 export function activateManagedBin(): void {
 	const separator = process.platform === "win32" ? ";" : ":";
-	const current = process.env.PATH || "";
+	const pathKey =
+		process.platform === "win32"
+			? Object.keys(process.env).find((key) => key.toLowerCase() === "path") || "Path"
+			: "PATH";
+	const current = process.env[pathKey] || "";
 	const managedEntries = [BIN_DIR];
 	if (process.platform === "win32") {
 		managedEntries.push(
@@ -81,7 +85,7 @@ export function activateManagedBin(): void {
 	const missing = managedEntries.filter(
 		(candidate) => !entries.some((entry) => normalize(entry) === normalize(candidate)),
 	);
-	process.env.PATH = [...missing, current].filter(Boolean).join(separator);
+	process.env[pathKey] = [...missing, current].filter(Boolean).join(separator);
 }
 
 export function readConfig(): TrxConfig | null {
