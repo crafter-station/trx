@@ -235,9 +235,8 @@ async function refreshWindowsPath(): Promise<void> {
 async function copyWindowsBinaries(name: string): Promise<boolean> {
 	const binaries = name === "ffmpeg" ? ["ffmpeg", "ffprobe"] : [name];
 	for (const binary of binaries) {
-		const result = await spawn(["where", binary]);
-		const source = result.stdout.split(/\r?\n/).find(Boolean);
-		if (result.exitCode !== 0 || !source || !existsSync(source)) return false;
+		const source = resolveExecutable(binary);
+		if (!source || !existsSync(source)) return false;
 		copyFileSync(source, join(getBinDir(), `${binary}.exe`));
 	}
 	activateManagedBin();
@@ -335,8 +334,8 @@ async function installViaWinget(name: string, wingetPkg: string, isTTY: boolean,
 		);
 		await refreshWindowsPath();
 		if (!(await isInstalled(name)) || !(await copyWindowsBinaries(name))) {
-			if (isTTY) p.log.error(`${name} was installed but is not available on PATH`);
-			return false;
+			if (isTTY) p.log.warn(`${name} was installed but is not available on PATH. Trying direct install...`);
+			return installWindowsPortable(name, isTTY);
 		}
 		if (isTTY) p.log.success(`${name} installed`);
 		return true;
