@@ -96,9 +96,18 @@
     {
       "type": "exec",
       "argv": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "Add-Type -AssemblyName System.Speech; $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer; $path = Join-Path (Resolve-Path 'trx-windows-evidence').Path 'spoken.wav'; $voice.SetOutputToWaveFile($path); $voice.Speak('TRX local transcription works on Windows'); $voice.Dispose()"
+      ]
+    },
+    {
+      "type": "exec",
+      "argv": [
         "trx",
         "transcribe",
-        "packages/cli/tests/fixtures/silence.wav",
+        "trx-windows-evidence/spoken.wav",
         "--backend",
         "local",
         "--language",
@@ -116,6 +125,12 @@
       "actual": "${steps.transcription.stdout}",
       "operator": "contains",
       "expected": "\"success\": true"
+    },
+    {
+      "type": "assert",
+      "actual": "${steps.transcription.stdout}",
+      "operator": "contains",
+      "expected": "Windows"
     },
     {
       "type": "exec",
@@ -138,16 +153,7 @@
     },
     {
       "type": "cuse",
-      "action": "wait",
-      "options": {
-        "window": "Command Prompt",
-        "timeoutMs": 20000
-      }
-    },
-    {
-      "type": "cuse",
-      "action": "focus",
-      "args": ["Command Prompt"]
+      "action": "settle"
     },
     {
       "type": "cuse",
