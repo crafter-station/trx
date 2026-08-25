@@ -37,6 +37,7 @@ export interface TrxConfig {
 const TRX_DIR = join(homedir(), ".trx");
 const CONFIG_PATH = join(TRX_DIR, "config.json");
 const MODELS_DIR = join(TRX_DIR, "models");
+const BIN_DIR = join(TRX_DIR, "bin");
 
 export function getTrxDir(): string {
 	return TRX_DIR;
@@ -44,6 +45,10 @@ export function getTrxDir(): string {
 
 export function getModelsDir(): string {
 	return MODELS_DIR;
+}
+
+export function getBinDir(): string {
+	return BIN_DIR;
 }
 
 export function getConfigPath(): string {
@@ -57,6 +62,30 @@ export function ensureTrxDir(): void {
 	if (!existsSync(MODELS_DIR)) {
 		mkdirSync(MODELS_DIR, { recursive: true });
 	}
+	if (!existsSync(BIN_DIR)) {
+		mkdirSync(BIN_DIR, { recursive: true });
+	}
+}
+
+export function activateManagedBin(): void {
+	const separator = process.platform === "win32" ? ";" : ":";
+	const pathKey =
+		process.platform === "win32"
+			? Object.keys(process.env).find((key) => key.toLowerCase() === "path") || "Path"
+			: "PATH";
+	const current = process.env[pathKey] || "";
+	const managedEntries = [BIN_DIR];
+	if (process.platform === "win32") {
+		managedEntries.push(
+			join(process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local"), "Microsoft", "WinGet", "Links"),
+		);
+	}
+	const entries = current.split(separator);
+	const normalize = (value: string) => (process.platform === "win32" ? value.toLowerCase() : value);
+	const missing = managedEntries.filter(
+		(candidate) => !entries.some((entry) => normalize(entry) === normalize(candidate)),
+	);
+	process.env[pathKey] = [...missing, current].filter(Boolean).join(separator);
 }
 
 export function readConfig(): TrxConfig | null {

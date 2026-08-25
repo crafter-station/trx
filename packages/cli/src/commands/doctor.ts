@@ -3,7 +3,7 @@ import { Command } from "commander";
 import { getElevenLabsKey } from "../core/elevenlabs.ts";
 import { getConfigPath, getModelsDir, readConfig } from "../utils/config.ts";
 import { type OutputFormat, output, outputError } from "../utils/output.ts";
-import { spawn } from "../utils/spawn.ts";
+import { resolveExecutable, spawn } from "../utils/spawn.ts";
 
 interface DepStatus {
 	installed: boolean;
@@ -12,12 +12,12 @@ interface DepStatus {
 }
 
 async function checkBinary(name: string): Promise<DepStatus> {
-	const binPath = Bun.which(name);
+	const binPath = resolveExecutable(name);
 	if (!binPath) {
 		return { installed: false, version: null, path: null };
 	}
 
-	const ver = await spawn([name, "--version"]);
+	const ver = await spawn([name, name === "ffmpeg" ? "-version" : "--version"]);
 	const version = ver.exitCode === 0 ? ver.stdout.split("\n")[0].trim() : null;
 
 	return { installed: true, version, path: binPath };

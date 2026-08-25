@@ -23,6 +23,11 @@
       "default": "auto",
       "description": "Default language for transcription (ISO 639-1 code or 'auto')"
     },
+    "--yes": {
+      "type": "boolean",
+      "default": false,
+      "description": "Install missing dependencies without prompting. Intended for IT-managed setup and CI"
+    },
     "--output": {
       "type": "string",
       "enum": [
@@ -63,6 +68,7 @@
     "trx init --backend vercel --model openai/whisper-1",
     "trx init --backend elevenlabs --model scribe_v2",
     "trx init --model large-v3-turbo --language es",
+    "trx init --yes --backend local --model small --language es",
     "trx init --model large --output json"
   ]
 }

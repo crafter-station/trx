@@ -110,6 +110,8 @@ describe("trx schema", () => {
 		expect(deps).toHaveProperty("whisper-cli");
 		expect(deps).toHaveProperty("yt-dlp");
 		expect(deps).toHaveProperty("ffmpeg");
+		const flags = data.flags as Record<string, unknown>;
+		expect(flags).toHaveProperty("--yes");
 	});
 
 	test("models schema returns valid JSON with command info", async () => {

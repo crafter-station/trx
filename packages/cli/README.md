@@ -15,7 +15,18 @@ bun add -g @crafter/trx
 trx init
 ```
 
-`trx init` installs dependencies (`whisper-cli`, `yt-dlp`, `ffmpeg` via Homebrew), downloads a Whisper model, and optionally installs the agent skill for your AI coding tool.
+`trx init` installs dependencies (`whisper-cli`, `yt-dlp`, `ffmpeg`), downloads a Whisper model, and optionally installs the agent skill for your AI coding tool.
+
+### Windows
+
+```powershell
+powershell -c "irm bun.sh/install.ps1 | iex"
+bun add --global @crafter/trx
+trx init --yes --backend local --model small --language es
+trx doctor --output json
+```
+
+The local backend keeps the media and transcript on the laptop. trx stores Whisper, `ffmpeg`, `ffprobe`, and `yt-dlp` in `%USERPROFILE%\.trx\bin`. Setup prefers `winget` and falls back to checksum-verified portable downloads when App Installer is unavailable. Company policy can still block these tools or their download sources.
 
 ### Skill Only
 

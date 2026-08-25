@@ -1,11 +1,28 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { getBinDir } from "./config.ts";
+
 export interface SpawnResult {
 	exitCode: number;
 	stdout: string;
 	stderr: string;
 }
 
+export function resolveExecutable(name: string): string | null {
+	if (process.platform === "win32") {
+		const managed = join(getBinDir(), name.toLowerCase().endsWith(".exe") ? name : `${name}.exe`);
+		if (existsSync(managed)) return managed;
+	}
+	return Bun.which(name);
+}
+
+function resolveCommand(cmd: string[]): string[] {
+	const executable = resolveExecutable(cmd[0]);
+	return executable ? [executable, ...cmd.slice(1)] : cmd;
+}
+
 export async function spawn(cmd: string[], opts?: { cwd?: string; timeout?: number }): Promise<SpawnResult> {
-	const proc = Bun.spawn(cmd, {
+	const proc = Bun.spawn(resolveCommand(cmd), {
 		cwd: opts?.cwd,
 		stdout: "pipe",
 		stderr: "pipe",
@@ -56,7 +73,7 @@ export async function spawnStreaming(
 	context: string,
 	onStderr?: (line: string) => void,
 ): Promise<string> {
-	const proc = Bun.spawn(cmd, {
+	const proc = Bun.spawn(resolveCommand(cmd), {
 		stdout: "pipe",
 		stderr: "pipe",
 	});

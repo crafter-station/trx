@@ -1,0 +1,47 @@
+name: Windows cuse
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - ".github/workflows/windows-cuse.yml"
+      - "packages/cli/**"
+      - "scenarios/trx-windows-local.json"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-cuse-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  local-transcription:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - id: cuse
+        uses: crafter-agents/cuse@8741ad59ca4ada8a1287110867e5daf58d2fdabd
+        with:
+          version: v0.2.1
+          scenario: scenarios/trx-windows-local.json
+          evidence-name: trx-windows-local
+
+      - name: Upload Windows evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: trx-windows-cuse
+          path: |
+            ${{ steps.cuse.outputs.evidence-path }}
+            trx-windows-evidence
+          if-no-files-found: error

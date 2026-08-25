@@ -32,6 +32,15 @@ trx doctor --output json
 
 `trx init` installs deps (`whisper-cli`, `yt-dlp`, `ffmpeg`), downloads a Whisper model, and installs the agent skill.
 
+On Windows, IT or CI can run a non-interactive local setup in PowerShell:
+
+```powershell
+trx init --yes --backend local --model small --language es
+trx doctor --output json
+```
+
+The local backend does not upload the source. Whisper, `ffmpeg`, `ffprobe`, and `yt-dlp` are stored in `%USERPROFILE%\.trx\bin`. Setup prefers `winget` and falls back to checksum-verified portable downloads. Corporate software policies can still block the install.
+
 ## Workflow
 
 ### 1. Dry-run first (always)

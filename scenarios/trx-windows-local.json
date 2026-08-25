@@ -1,0 +1,200 @@
+{
+  "version": 1,
+  "name": "trx local transcription on Windows",
+  "platforms": ["windows"],
+  "vars": {},
+  "defaultTimeoutMs": 120000,
+  "steps": [
+    {
+      "type": "cuse",
+      "action": "os",
+      "saveAs": "detectedOs"
+    },
+    {
+      "type": "assert",
+      "actual": "${steps.detectedOs.detail}",
+      "operator": "eq",
+      "expected": "windows"
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "New-Item -ItemType Directory -Force -Path 'trx-windows-evidence' | Out-Null"
+      ]
+    },
+    {
+      "type": "cuse",
+      "action": "capture",
+      "args": ["trx-windows-evidence/before.png"]
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "bun",
+        "pm",
+        "pack",
+        "--filename",
+        "trx.tgz",
+        "--ignore-scripts"
+      ],
+      "cwd": "packages/cli",
+      "timeoutMs": 300000
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "$tarball = Get-ChildItem -Path . -Filter 'trx.tgz' -Recurse | Select-Object -First 1; if (-not $tarball) { Write-Error 'trx.tgz not found'; exit 1 }; & bun add --global $tarball.FullName; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }"
+      ],
+      "timeoutMs": 300000
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "$result = & trx init --yes --backend local --model tiny --language en --output json; $code = $LASTEXITCODE; $result | Set-Content -Encoding utf8 'trx-windows-evidence/init.json'; $result; exit $code"
+      ],
+      "timeoutMs": 900000,
+      "saveAs": "init"
+    },
+    {
+      "type": "assert",
+      "actual": "${steps.init.stdout}",
+      "operator": "contains",
+      "expected": "\"success\": true"
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "$result = & trx doctor --output json; $code = $LASTEXITCODE; $result | Set-Content -Encoding utf8 'trx-windows-evidence/doctor.json'; $result; exit $code"
+      ],
+      "saveAs": "doctor"
+    },
+    {
+      "type": "assert",
+      "actual": "${steps.doctor.stdout}",
+      "operator": "contains",
+      "expected": "\"healthy\": true"
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "Add-Type -AssemblyName System.Speech; $voice = New-Object System.Speech.Synthesis.SpeechSynthesizer; $path = Join-Path (Resolve-Path 'trx-windows-evidence').Path 'spoken.wav'; $voice.SetOutputToWaveFile($path); $voice.Speak('TRX local transcription works on Windows'); $voice.Dispose()"
+      ]
+    },
+    {
+      "type": "exec",
+      "argv": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "$result = & trx transcribe 'trx-windows-evidence/spoken.wav' --backend local --language en --output-dir 'trx-windows-evidence/output' --output json; $code = $LASTEXITCODE; $result | Set-Content -Encoding utf8 'trx-windows-evidence/transcription.json'; $result; exit $code"
+      ],
+      "timeoutMs": 300000,
+      "saveAs": "transcription"
+    },
+    {
+      "type": "assert",
+      "actual": "${steps.transcription.stdout}",
+      "operator": "contains",
+      "expected": "\"success\": true"
+    },
+    {
+      "type": "assert",
+      "actual": "${steps.transcription.stdout}",
+      "operator": "contains",
+      "expected": "Windows"
+    },
+    {
+      "type": "cuse",
+      "action": "launch",
+      "args": ["cmd"]
+    },
+    {
+      "type": "cuse",
+      "action": "settle"
+    },
+    {
+      "type": "cuse",
+      "action": "type",
+      "args": ["title trx-windows-proof"]
+    },
+    {
+      "type": "cuse",
+      "action": "key",
+      "args": ["Return"]
+    },
+    {
+      "type": "cuse",
+      "action": "wait",
+      "options": {
+        "window": "trx-windows-proof",
+        "timeoutMs": 20000
+      }
+    },
+    {
+      "type": "cuse",
+      "action": "type",
+      "args": ["echo trx Windows local transcription passed"]
+    },
+    {
+      "type": "cuse",
+      "action": "key",
+      "args": ["Return"]
+    },
+    {
+      "type": "cuse",
+      "action": "type",
+      "args": ["echo doctor healthy and dependencies installed"]
+    },
+    {
+      "type": "cuse",
+      "action": "key",
+      "args": ["Return"]
+    },
+    {
+      "type": "cuse",
+      "action": "settle"
+    },
+    {
+      "type": "cuse",
+      "action": "capture",
+      "args": ["trx-windows-evidence/after.png"]
+    },
+    {
+      "type": "cuse",
+      "action": "frontmost",
+      "saveAs": "proofWindow"
+    },
+    {
+      "type": "assert",
+      "actual": "${steps.proofWindow.detail}",
+      "operator": "contains",
+      "expected": "trx-windows-proof"
+    }
+  ],
+  "finally": [
+    {
+      "type": "exec",
+      "argv": [
+        "powershell",
+        "-NoProfile",
+        "-Command",
+        "$targets = Get-Process cmd -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'trx-windows-proof' }; if ($targets) { $targets | Stop-Process -Force }; exit 0"
+      ]
+    }
+  ]
+}

@@ -6,10 +6,13 @@ import { createModelsCommand } from "../src/commands/models.ts";
 import { createSchemaCommand } from "../src/commands/schema.ts";
 import { createSkillsCommand } from "../src/commands/skills.ts";
 import { createTranscribeCommand } from "../src/commands/transcribe.ts";
+import { activateManagedBin } from "../src/utils/config.ts";
 import { outputError } from "../src/utils/output.ts";
 import { validateOutputFormat } from "../src/validation/input.ts";
 
 const program = new Command();
+
+activateManagedBin();
 
 import pkg from "../package.json" with { type: "json" };
 
