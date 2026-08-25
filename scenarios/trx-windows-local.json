@@ -22,13 +22,13 @@
         "powershell",
         "-NoProfile",
         "-Command",
-        "New-Item -ItemType Directory -Force -Path '.trx-windows-evidence' | Out-Null"
+        "New-Item -ItemType Directory -Force -Path 'trx-windows-evidence' | Out-Null"
       ]
     },
     {
       "type": "cuse",
       "action": "capture",
-      "args": [".trx-windows-evidence/before.png"]
+      "args": ["trx-windows-evidence/before.png"]
     },
     {
       "type": "exec",
@@ -37,7 +37,7 @@
         "pm",
         "pack",
         "--filename",
-        "../../.trx-windows-evidence/trx.tgz",
+        "trx.tgz",
         "--ignore-scripts"
       ],
       "cwd": "packages/cli",
@@ -45,7 +45,7 @@
     },
     {
       "type": "exec",
-      "argv": ["bun", "add", "--global", ".trx-windows-evidence/trx.tgz"],
+      "argv": ["bun", "add", "--global", "packages/cli/trx.tgz"],
       "timeoutMs": 300000
     },
     {
@@ -99,7 +99,7 @@
         "--language",
         "en",
         "--output-dir",
-        ".trx-windows-evidence/output",
+        "trx-windows-evidence/output",
         "--output",
         "json"
       ],
@@ -118,7 +118,7 @@
         "powershell",
         "-NoProfile",
         "-Command",
-        "Set-Content -Path '.trx-windows-evidence/init.json' -Value $env:CUSE_INIT_RESULT; Set-Content -Path '.trx-windows-evidence/doctor.json' -Value $env:CUSE_DOCTOR_RESULT; Set-Content -Path '.trx-windows-evidence/transcription.json' -Value $env:CUSE_TRANSCRIPTION_RESULT"
+        "Set-Content -Path 'trx-windows-evidence/init.json' -Value $env:CUSE_INIT_RESULT; Set-Content -Path 'trx-windows-evidence/doctor.json' -Value $env:CUSE_DOCTOR_RESULT; Set-Content -Path 'trx-windows-evidence/transcription.json' -Value $env:CUSE_TRANSCRIPTION_RESULT"
       ],
       "env": {
         "CUSE_INIT_RESULT": "${steps.init.stdout}",
@@ -189,7 +189,7 @@
     {
       "type": "cuse",
       "action": "capture",
-      "args": [".trx-windows-evidence/after.png"]
+      "args": ["trx-windows-evidence/after.png"]
     },
     {
       "type": "cuse",
@@ -210,7 +210,7 @@
         "powershell",
         "-NoProfile",
         "-Command",
-        "Get-Process cmd -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'trx-windows-proof' } | Stop-Process -Force"
+        "$targets = Get-Process cmd -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowTitle -eq 'trx-windows-proof' }; if ($targets) { $targets | Stop-Process -Force }; exit 0"
       ]
     }
   ]

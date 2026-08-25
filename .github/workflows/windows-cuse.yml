@@ -43,5 +43,5 @@ jobs:
           name: trx-windows-cuse
           path: |
             ${{ steps.cuse.outputs.evidence-path }}
-            .trx-windows-evidence
+            trx-windows-evidence
           if-no-files-found: error
