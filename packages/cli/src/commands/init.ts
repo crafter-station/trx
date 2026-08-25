@@ -48,6 +48,11 @@ const ELEVENLABS_MODELS = [
 const HF_BASE = "https://huggingface.co/ggerganov/whisper.cpp/resolve/main";
 const WHISPER_CPP_RELEASE = "https://github.com/ggml-org/whisper.cpp/releases/download/b4938";
 const WHISPER_WINDOWS_X64_SHA256 = "c2a4b60edb11f7e11a9191ffb50929535527d4d91c9903dbe3e554583bbbc63d";
+const YT_DLP_WINDOWS_URL = "https://github.com/yt-dlp/yt-dlp/releases/download/2026.08.19/yt-dlp.exe";
+const YT_DLP_WINDOWS_SHA256 = "66674953fe251b89f4d08c5f0e35e0728679bd67ab3d7d05c0562af101dd3e7a";
+const FFMPEG_WINDOWS_URL =
+	"https://github.com/GyanD/codexffmpeg/releases/download/8.1.1/ffmpeg-8.1.1-essentials_build.zip";
+const FFMPEG_WINDOWS_SHA256 = "6f58ce889f59c311410f7d2b18895b33c03456463486f3b1ebc93d97a0f54541";
 
 type Platform = "macos" | "linux" | "windows";
 
@@ -240,10 +245,68 @@ async function copyWindowsBinaries(name: string): Promise<boolean> {
 	return true;
 }
 
+function verifySha256(path: string, expected: string, name: string): void {
+	const digest = createHash("sha256").update(readFileSync(path)).digest("hex");
+	if (digest !== expected) throw new Error(`${name} checksum mismatch: expected ${expected}, got ${digest}`);
+}
+
+function reportInstallFailure(message: string, isTTY: boolean): void {
+	if (isTTY) p.log.error(message);
+	else console.error(message);
+}
+
+async function installWindowsPortable(name: string, isTTY: boolean): Promise<boolean> {
+	const downloadDir = join(tmpdir(), `trx-${name}-download`);
+	const installDir = getBinDir();
+
+	try {
+		rmSync(downloadDir, { recursive: true, force: true });
+		mkdirSync(downloadDir, { recursive: true });
+
+		if (name === "yt-dlp") {
+			const executable = join(downloadDir, "yt-dlp.exe");
+			await spawnOrThrow(["curl", "-L", "--progress-bar", "-o", executable, YT_DLP_WINDOWS_URL], "download yt-dlp");
+			verifySha256(executable, YT_DLP_WINDOWS_SHA256, "yt-dlp");
+			copyFileSync(executable, join(installDir, "yt-dlp.exe"));
+		} else if (name === "ffmpeg") {
+			const archive = join(downloadDir, "ffmpeg.zip");
+			const extracted = join(downloadDir, "extracted");
+			await spawnOrThrow(["curl", "-L", "--progress-bar", "-o", archive, FFMPEG_WINDOWS_URL], "download ffmpeg");
+			verifySha256(archive, FFMPEG_WINDOWS_SHA256, "ffmpeg");
+			await spawnOrThrow(
+				[
+					"powershell",
+					"-NoProfile",
+					"-Command",
+					`Expand-Archive -Force -LiteralPath '${archive.replaceAll("'", "''")}' -DestinationPath '${extracted.replaceAll("'", "''")}'`,
+				],
+				"extract ffmpeg",
+			);
+			const sourceDir = join(extracted, "ffmpeg-8.1.1-essentials_build", "bin");
+			for (const binary of ["ffmpeg", "ffprobe"]) {
+				const source = join(sourceDir, `${binary}.exe`);
+				if (!existsSync(source)) throw new Error(`${binary}.exe not found in ffmpeg archive`);
+				copyFileSync(source, join(installDir, `${binary}.exe`));
+			}
+		} else {
+			throw new Error(`No portable Windows installer configured for ${name}`);
+		}
+
+		activateManagedBin();
+		if (!(await isInstalled(name))) throw new Error(`${name} is not available from ${installDir}`);
+		rmSync(downloadDir, { recursive: true, force: true });
+		return true;
+	} catch (error) {
+		reportInstallFailure(`Failed to install ${name}: ${(error as Error).message}`, isTTY);
+		rmSync(downloadDir, { recursive: true, force: true });
+		return false;
+	}
+}
+
 async function installViaWinget(name: string, wingetPkg: string, isTTY: boolean, yes: boolean): Promise<boolean> {
 	if (!(await isInstalled("winget"))) {
-		if (isTTY) p.log.error("winget not found. Install App Installer from the Microsoft Store.");
-		return false;
+		if (isTTY) p.log.info(`winget not found. Installing ${name} directly...`);
+		return installWindowsPortable(name, isTTY);
 	}
 
 	const confirm = yes
@@ -278,9 +341,9 @@ async function installViaWinget(name: string, wingetPkg: string, isTTY: boolean,
 		}
 		if (isTTY) p.log.success(`${name} installed`);
 		return true;
-	} catch (e) {
-		if (isTTY) p.log.error(`Failed: ${(e as Error).message}`);
-		return false;
+	} catch {
+		if (isTTY) p.log.warn(`winget failed for ${name}. Trying direct install...`);
+		return installWindowsPortable(name, isTTY);
 	}
 }
 
@@ -310,10 +373,7 @@ async function installWhisperWindows(isTTY: boolean, yes: boolean): Promise<bool
 		rmSync(downloadDir, { recursive: true, force: true });
 		mkdirSync(extractDir, { recursive: true });
 		await spawnOrThrow(["curl", "-L", "--progress-bar", "-o", zipPath, downloadUrl], "download whisper-cli");
-		const digest = createHash("sha256").update(readFileSync(zipPath)).digest("hex");
-		if (digest !== WHISPER_WINDOWS_X64_SHA256) {
-			throw new Error(`whisper-cli checksum mismatch: expected ${WHISPER_WINDOWS_X64_SHA256}, got ${digest}`);
-		}
+		verifySha256(zipPath, WHISPER_WINDOWS_X64_SHA256, "whisper-cli");
 
 		if (isTTY) p.log.step("Extracting...");
 		const escapedZipPath = zipPath.replaceAll("'", "''");
@@ -346,7 +406,7 @@ async function installWhisperWindows(isTTY: boolean, yes: boolean): Promise<bool
 		rmSync(downloadDir, { recursive: true, force: true });
 		return true;
 	} catch (e) {
-		if (isTTY) p.log.error(`Failed: ${(e as Error).message}`);
+		reportInstallFailure(`Failed to install whisper-cli: ${(e as Error).message}`, isTTY);
 		rmSync(downloadDir, { recursive: true, force: true });
 		return false;
 	}

@@ -39,7 +39,7 @@ trx init --yes --backend local --model small --language es
 trx doctor --output json
 ```
 
-The local backend does not upload the source. Whisper is stored in `%USERPROFILE%\.trx\bin`; `ffmpeg` and `yt-dlp` use `winget`. Corporate software policies can still block the install.
+The local backend does not upload the source. Whisper, `ffmpeg`, `ffprobe`, and `yt-dlp` are stored in `%USERPROFILE%\.trx\bin`. Setup prefers `winget` and falls back to checksum-verified portable downloads. Corporate software policies can still block the install.
 
 ## Workflow
 

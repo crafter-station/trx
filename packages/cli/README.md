@@ -26,7 +26,7 @@ trx init --yes --backend local --model small --language es
 trx doctor --output json
 ```
 
-The local backend keeps the media and transcript on the laptop. trx stores Whisper in `%USERPROFILE%\.trx\bin` and installs `ffmpeg` plus `yt-dlp` through `winget`. Company policy can still block these tools or their download sources.
+The local backend keeps the media and transcript on the laptop. trx stores Whisper, `ffmpeg`, `ffprobe`, and `yt-dlp` in `%USERPROFILE%\.trx\bin`. Setup prefers `winget` and falls back to checksum-verified portable downloads when App Installer is unavailable. Company policy can still block these tools or their download sources.
 
 ### Skill Only
 
