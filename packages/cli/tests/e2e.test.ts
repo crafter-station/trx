@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { resolve } from "node:path";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
 import { lastCueEndMs } from "../src/core/audio.ts";
 import { stitchSrt } from "../src/core/chunk.ts";
 import { cuesToSrt, cuesToTranscript, getElevenLabsKey, wordsToCues } from "../src/core/elevenlabs.ts";
 import { presetLanguages, presetPrompt } from "../src/core/prompts.ts";
 import { buildWhisperArgs } from "../src/core/whisper.ts";
-import { validateOutputFormat } from "../src/validation/input.ts";
+import { validateFileExtension, validateOutputFormat } from "../src/validation/input.ts";
 
 const CLI = resolve(import.meta.dir, "../bin/trx.ts");
 
@@ -199,7 +201,48 @@ describe("SRT stitching", () => {
 	});
 });
 
+// Dry-run validates file paths without calling this helper, so cover normalization directly too.
+describe("file extension validation", () => {
+	test.each([
+		["recording.mp4", ".mp4"],
+		["recording.MP4", ".mp4"],
+		["recording.mp3", ".mp3"],
+		["recording.Mp3", ".mp3"],
+	])("normalizes %s to %s", (path, extension) => {
+		expect(validateFileExtension(path)).toBe(extension);
+	});
+
+	test.each(["recording.txt", "recording.TXT"])("rejects unsupported %s", (path) => {
+		expect(() => validateFileExtension(path)).toThrow("Unsupported file type");
+	});
+});
+
 describe("trx transcribe --dry-run", () => {
+	test.each(["MP4", "Mp3"])("accepts a local .%s file and preserves its path", async (extension) => {
+		const dir = mkdtempSync(join(tmpdir(), "trx-extension-"));
+		const input = join(dir, `recording.${extension}`);
+		try {
+			// Dry-run validates the path without decoding media or invoking a transcription backend.
+			writeFileSync(input, "");
+			mkdirSync(join(dir, ".trx"));
+			writeFileSync(join(dir, ".trx/config.json"), JSON.stringify({ backend: "local" }));
+			const { stdout, exitCode } = await run(["transcribe", input, "--dry-run", "--output", "json"], {
+				...process.env,
+				HOME: dir,
+				USERPROFILE: dir,
+				FORCE_COLOR: "0",
+			});
+			expect(exitCode).toBe(0);
+			const data = parseJSON(stdout) as Record<string, unknown>;
+			expect(data.dryRun).toBe(true);
+			expect(data.inputType).toBe("file");
+			expect(data.input).toBe(input);
+			expect(data.steps).not.toContain("download via yt-dlp");
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	test("validates URL input and shows execution plan", async () => {
 		const { stdout, exitCode } = await run([
 			"transcribe",
